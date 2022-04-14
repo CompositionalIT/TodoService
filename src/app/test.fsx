@@ -109,7 +109,5 @@ let validator (request:CreateOrderRequest) = result {
         }
 }
 
-
-
 let saveToDatabase (r:CreateOrderRequest) =
     ()
