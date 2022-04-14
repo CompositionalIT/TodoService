@@ -19,6 +19,7 @@ rulesets:
     scriptBasePath: ../db
     scripts:
       - include: "Queries/*.sql"
+      - include: "Commands/*.sql"
 
     tableScripts:
       - include: .*

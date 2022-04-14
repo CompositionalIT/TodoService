@@ -8,7 +8,8 @@
   <ItemGroup>
     <Compile Include="TodoDb.fs" />
     <Compile Include="Domain.fs" />
-    <Compile Include="TodoService.fs" />
+    <Compile Include="Todo.Service.fs" />
+    <Compile Include="Todo.Api.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

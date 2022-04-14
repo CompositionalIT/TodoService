@@ -5,65 +5,49 @@ open Microsoft.Extensions.DependencyInjection
 open Saturn
 open System.Text.Json
 
-let connectionString = "Data Source=localhost,1434;Database=Todo;User=sa;Password=yourStrong(!)Password; TrustServerCertificate=True"
-
-let createTodo next (ctx:HttpContext) = task {
-    let! request = ctx.BindJsonAsync<TodoService.CreateTodoRequest>()
-    let! result = TodoService.createTodo connectionString request
-    return!
-        match result with
-        | Ok _ -> next ctx
-        | Error err -> Response.badRequest ctx err
-}
-
-let getTodoById (todoId:string) next (ctx:HttpContext) = task {
-    let! result = TodoService.getTodoById connectionString todoId
-    return!
-        match result with
-        | Ok (Some todo) -> json todo next ctx
-        | Ok None -> Response.notFound ctx $"No such todo {todoId}"
-        | Error err -> Response.badRequest ctx err
-}
-
-let getAllTodos next ctx = task {
-    let! results = TodoService.getAllTodos connectionString
-    return! json results next ctx
-}
-
-/// Saturn's version of router
-let saturnRouter = router {
-    post "/" createTodo
-    get "/todo" getAllTodos
-    getf "/todo/%s" getTodoById
-}
-
-/// Giraffe version of router
-let giraffeRouter =
-    choose [
-        POST >=> createTodo
-        GET >=> route "/todo" >=> getAllTodos
-        GET >=> routef "/todo/%s" getTodoById
-    ]
+let configureServices (services:IServiceCollection) =
+    services.AddSingleton<Json.ISerializer>(
+        SystemTextJson.Serializer(
+            JsonSerializerOptions(
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+            )
+        )
+    )
 
 let app = application {
-    use_router giraffeRouter
-    service_config (fun svc ->
-        svc.AddSingleton<Json.ISerializer>(SystemTextJson.Serializer(JsonSerializerOptions())))
+    use_router Todo.Api.giraffeRouter
+    service_config configureServices
 }
 
 run app
 
-
 (*
 
-POST http://localhost:5000/
+-- CREATE TODO
+POST http://localhost:5000/todo/
 
 {
-    "Title": "Another Todo",
-    "Description": "This is a second test"
+    "title": "Another Todo",
+    "description": "This is a second test"
 }
 
+-- GET TODO
 http://localhost:5000/todo/f453dd17-d3f7-4bb1-9dd4-f707ea202f83
-http://localhost:5000/todo
+
+-- GET ALL TODOS
+http://localhost:5000/todo/
+
+-- COMPLETE TODO
+PUT http://localhost:5000/todo/f453dd17-d3f7-4bb1-9dd4-f707ea202f83/complete
+
+-- EDIT TODO
+PUT http://localhost:5000/todo/
+
+{
+    "id": "f453dd17-d3f7-4bb1-9dd4-f707ea202f83",
+    "title": "Edited todo",
+    "description": "Updated description"
+}
 
 *)

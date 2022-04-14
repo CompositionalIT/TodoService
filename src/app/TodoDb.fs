@@ -1,5 +1,5 @@
 ﻿// Edit or remove this or the below line to regenerate on next build
-// Hash: 80c9a67c8d104be5ca792077f3af5e3e76d9ce2791d20bb397d3fcfe586c512c
+// Hash: b202986a2045ce26dd10dad750680587e3b8ee2f7ac737b75febc226d2c10d20
 
 //////////////////////////////////////////
 //
@@ -616,6 +616,181 @@ WHERE
           SqlParameter("completedDate", SqlDbType.DateTime, Value = Option.toDbNull (^a: (member ``CompletedDate``: DateTime option) dto))
         |]
       ``Todo_Update_Executable``(this.connStr, this.conn, this.configureConn, this.userConfigureCmd, getSqlParams, [], this.tran)
+
+
+  module ``Commands`` =
+
+
+      [<EditorBrowsable(EditorBrowsableState.Never)>]
+      type ``CompleteTodo_Executable`` (connStr: string, conn: SqlConnection, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction) =
+
+        let configureCmd sqlParams (cmd: SqlCommand) =
+          cmd.CommandText <- """-- Commands\CompleteTodo.sql
+UPDATE dbo.Todo
+SET CompletedDate = @Date
+WHERE Id = @Id"""
+          cmd.Parameters.AddRange sqlParams
+          userConfigureCmd cmd
+
+        member _.ExecuteAsync(?cancellationToken) =
+          let sqlParams = getSqlParams ()
+          executeNonQueryAsync connStr conn tran configureConn (configureCmd sqlParams) tempTableData (defaultArg cancellationToken CancellationToken.None)
+
+        member this.AsyncExecute() =
+          async {
+            let! ct = Async.CancellationToken
+            return! this.ExecuteAsync(ct) |> Async.AwaitTask
+          }
+
+        member _.Execute() =
+          let sqlParams = getSqlParams ()
+          executeNonQuery connStr conn tran configureConn (configureCmd sqlParams) tempTableData
+
+
+      type ``CompleteTodo`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        new() =
+          failwith "This constructor is for aiding reflection and type constraints only"
+          ``CompleteTodo``(null, null, null)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val connStr = connStr
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val conn = conn
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val tran = tran
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val configureConn : SqlConnection -> unit = ignore with get, set
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val userConfigureCmd : SqlCommand -> unit = ignore with get, set
+
+        member this.ConfigureCommand(configureCommand: SqlCommand -> unit) =
+          this.userConfigureCmd <- configureCommand
+          this
+
+        static member WithConnection(connectionString, ?configureConnection: SqlConnection -> unit) =
+          ``CompleteTodo``(connectionString, null, null).ConfigureConnection(?configureConnection=configureConnection)
+
+        static member WithConnection(connection, ?transaction) = ``CompleteTodo``(null, connection, defaultArg transaction null)
+
+        member private this.ConfigureConnection(?configureConnection: SqlConnection -> unit) =
+          match configureConnection with
+          | None -> ()
+          | Some config -> this.configureConn <- config
+          this
+
+        member this.WithParameters
+          (
+            ``Date``: DateTime,
+            ``Id``: Guid
+          ) =
+          let getSqlParams () =
+            [|
+              SqlParameter("@Date", SqlDbType.DateTime, Value = ``Date``)
+              SqlParameter("@Id", SqlDbType.UniqueIdentifier, Value = ``Id``)
+            |]
+          ``CompleteTodo_Executable``(this.connStr, this.conn, this.configureConn, this.userConfigureCmd, getSqlParams, [], this.tran)
+
+        member inline this.WithParameters(dto: ^a) =
+          let getSqlParams () =
+            [|
+              SqlParameter("@Date", SqlDbType.DateTime, Value = (^a: (member ``Date``: DateTime) dto))
+              SqlParameter("@Id", SqlDbType.UniqueIdentifier, Value = (^a: (member ``Id``: Guid) dto))
+            |]
+          ``CompleteTodo_Executable``(this.connStr, this.conn, this.configureConn, this.userConfigureCmd, getSqlParams, [], this.tran)
+
+
+      [<EditorBrowsable(EditorBrowsableState.Never)>]
+      type ``EditTodo_Executable`` (connStr: string, conn: SqlConnection, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction) =
+
+        let configureCmd sqlParams (cmd: SqlCommand) =
+          cmd.CommandText <- """-- Commands\EditTodo.sql
+UPDATE dbo.Todo
+SET Title = @Title,
+    [Description] = @Description
+WHERE Id = @Id"""
+          cmd.Parameters.AddRange sqlParams
+          userConfigureCmd cmd
+
+        member _.ExecuteAsync(?cancellationToken) =
+          let sqlParams = getSqlParams ()
+          executeNonQueryAsync connStr conn tran configureConn (configureCmd sqlParams) tempTableData (defaultArg cancellationToken CancellationToken.None)
+
+        member this.AsyncExecute() =
+          async {
+            let! ct = Async.CancellationToken
+            return! this.ExecuteAsync(ct) |> Async.AwaitTask
+          }
+
+        member _.Execute() =
+          let sqlParams = getSqlParams ()
+          executeNonQuery connStr conn tran configureConn (configureCmd sqlParams) tempTableData
+
+
+      type ``EditTodo`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        new() =
+          failwith "This constructor is for aiding reflection and type constraints only"
+          ``EditTodo``(null, null, null)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val connStr = connStr
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val conn = conn
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val tran = tran
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val configureConn : SqlConnection -> unit = ignore with get, set
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val userConfigureCmd : SqlCommand -> unit = ignore with get, set
+
+        member this.ConfigureCommand(configureCommand: SqlCommand -> unit) =
+          this.userConfigureCmd <- configureCommand
+          this
+
+        static member WithConnection(connectionString, ?configureConnection: SqlConnection -> unit) =
+          ``EditTodo``(connectionString, null, null).ConfigureConnection(?configureConnection=configureConnection)
+
+        static member WithConnection(connection, ?transaction) = ``EditTodo``(null, connection, defaultArg transaction null)
+
+        member private this.ConfigureConnection(?configureConnection: SqlConnection -> unit) =
+          match configureConnection with
+          | None -> ()
+          | Some config -> this.configureConn <- config
+          this
+
+        member this.WithParameters
+          (
+            ``Title``: string,
+            ``Description``: string,
+            ``Id``: Guid
+          ) =
+          let getSqlParams () =
+            [|
+              SqlParameter("@Title", SqlDbType.NVarChar, Size = 255, Value = ``Title``)
+              SqlParameter("@Description", SqlDbType.NVarChar, Size = 255, Value = ``Description``)
+              SqlParameter("@Id", SqlDbType.UniqueIdentifier, Value = ``Id``)
+            |]
+          ``EditTodo_Executable``(this.connStr, this.conn, this.configureConn, this.userConfigureCmd, getSqlParams, [], this.tran)
+
+        member inline this.WithParameters(dto: ^a) =
+          let getSqlParams () =
+            [|
+              SqlParameter("@Title", SqlDbType.NVarChar, Size = 255, Value = (^a: (member ``Title``: string) dto))
+              SqlParameter("@Description", SqlDbType.NVarChar, Size = 255, Value = (^a: (member ``Description``: string) dto))
+              SqlParameter("@Id", SqlDbType.UniqueIdentifier, Value = (^a: (member ``Id``: Guid) dto))
+            |]
+          ``EditTodo_Executable``(this.connStr, this.conn, this.configureConn, this.userConfigureCmd, getSqlParams, [], this.tran)
 
 
   module ``Queries`` =
