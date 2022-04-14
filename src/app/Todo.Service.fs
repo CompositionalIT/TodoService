@@ -8,10 +8,13 @@ open System.Threading.Tasks
 open FsToolkit.ErrorHandling
 
 /// Represents an error occurred while executing a service call.
-type ServiceError<'T> =
+type ValidationError<'T> =
     | NotFound of string
-    | ValidationError of 'T
+    | ValidationErrors of {| Field : string; Error : string |} list
     | GenericError of 'T
+
+module ValidationError =
+    let create field message = {| Field = field; Error = message |}
 
 let saveUsingDapper connectionString todo =
     let conn = new SqlConnection(connectionString)
@@ -54,8 +57,8 @@ let createTodo (connectionString:string) (request:CreateTodoRequest) = task {
                 .ExecuteAsync()
                 :> Task
         return Ok ()
-    | Error err ->
-        return Error (ValidationError err)
+    | Error errs ->
+        return Error (ValidationErrors errs)
 }
 
 let getTodoById (connectionString:string) (todoId:string) = task {
@@ -69,10 +72,10 @@ let getTodoById (connectionString:string) (todoId:string) = task {
                 .AsyncExecuteSingle()
         return
             match result with
-            | None -> Error (NotFound $"Unknown Todo {todoId}")
+            | None -> Error (NotFound $"Unknown Todo {todoId.Value}")
             | Some result -> Ok result
     | Error message ->
-        return Error (ValidationError message)
+        return Error (ValidationErrors [ ValidationError.create "TodoId" message ])
 }
 
 let getAllTodos (connectionString:string) =
@@ -95,19 +98,21 @@ let completeTodo (connectionString:string) (todoId:string) = task {
                 .ExecuteAsync()
         return
             match rowsModified with
-            | 0 -> Error (NotFound $"Unknown Todo {todoId}")
+            | 0 -> Error (NotFound $"Unknown Todo {todoId.Value}")
             | 1 -> Ok ()
             | _ -> Error (GenericError $"Too many rows modified ({rowsModified})")
     | Error message ->
-        return Error (ValidationError message)
+        return Error (ValidationErrors [ ValidationError.create "TodoId" message ])
 }
 
 let editTodo (connectionString:string) (request:EditTodoRequest) = task {
-    let todoDto = result {
+    let todoDto = validation {
         let! title = String255.TryCreate "Title" request.Title
-        let! description = String255.TryCreate "Description" request.Description
+        and! description = String255.TryCreate "Description" request.Description
+        and! todoId = TodoId.TryCreate request.Id |> Result.mapError (ValidationError.create "Id")
         return
-            {| request with
+            {|
+                Id = todoId.Value
                 Title = title.Value
                 Description = description.Value
             |}
@@ -127,5 +132,5 @@ let editTodo (connectionString:string) (request:EditTodoRequest) = task {
             | 1 -> Ok ()
             | _ -> Error (GenericError $"Too many rows modified ({rowsModified})")
     | Error error ->
-        return Error (ValidationError error)
+        return Error (ValidationErrors error)
 }

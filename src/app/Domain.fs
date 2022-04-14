@@ -4,10 +4,10 @@ open FsToolkit.ErrorHandling
 open System
 
 module Result =
-    let optionToResultNoneOk validator v =
+    let optionToResultOption validator onNone v =
         match v with
         | None ->
-            Ok None
+            onNone
         | Some v ->
             match validator v with
             | Ok v ->
@@ -23,8 +23,8 @@ module Result =
 type String255 =
     | String255 of string
     static member TryCreate name (s:string) =
-        if isNull s then Error $"No value provided for field '{name}'."
-        elif s.Length > 255 then Error "Too long"
+        if isNull s then Error {| Field = name; Error = $"No value provided." |}
+        elif s.Length > 255 then Error {| Field = name; Error = $"Field is too long." |}
         else Ok (String255 s)
     member this.Value = match this with String255 v -> v
 
@@ -32,12 +32,15 @@ type TodoId =
     private | TodoId of Guid
     member this.Value = match this with TodoId v -> v
     static member Create () = TodoId (Guid.NewGuid())
-    static member Create todoId = TodoId todoId
+    static member TryCreate todoId =
+        if todoId = Guid.Empty then Error "This is the empty GUID."
+        else Ok (TodoId todoId)
     static member TryParse (guid:string) =
         guid
         |> Guid.TryParse
         |> Result.ofParseResult
         |> Result.map TodoId
+        |> Result.mapError (fun _ -> "Not a valid GUID")
 
 type Todo =
     {
@@ -48,12 +51,12 @@ type Todo =
         CompletedDate : DateTime option
     }
 
-    static member TryCreate (title, description) = result {
+    static member TryCreate (title, description) = validation {
         let! title = String255.TryCreate "Title" title
-        let! description =
+        and! description =
             description
             |> Option.ofObj
-            |> Result.optionToResultNoneOk (String255.TryCreate "Description")
+            |> Result.optionToResultOption (String255.TryCreate "Description") (Ok None)
         return {
             Id = TodoId.Create ()
             Title = title

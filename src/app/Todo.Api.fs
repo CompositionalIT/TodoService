@@ -9,7 +9,7 @@ module Result =
     let errorToHttpHandler next ctx error =
         match error with
         | Service.NotFound msg -> RequestErrors.NOT_FOUND msg next ctx
-        | Service.ValidationError msg -> RequestErrors.BAD_REQUEST msg next ctx
+        | Service.ValidationErrors msgs -> RequestErrors.BAD_REQUEST msgs next ctx
         | Service.GenericError msg -> RequestErrors.BAD_REQUEST msg next ctx
     let toHttpHandler next ctx onSuccess result =
         match result with

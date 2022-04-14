@@ -28,7 +28,7 @@ run app
 POST http://localhost:5000/todo/
 
 {
-    "title": "Another Todo",
+    "Title": "Another Todo",
     "description": "This is a second test"
 }
 
@@ -39,15 +39,15 @@ http://localhost:5000/todo/f453dd17-d3f7-4bb1-9dd4-f707ea202f83
 http://localhost:5000/todo/
 
 -- COMPLETE TODO
-PUT http://localhost:5000/todo/f453dd17-d3f7-4bb1-9dd4-f707ea202f83/complete
+PUT http://localhost:5000/todo/f453dd17-d3f7-4bb1-9dd4-f707ea202f82/complete
 
 -- EDIT TODO
 PUT http://localhost:5000/todo/
 
 {
-    "id": "f453dd17-d3f7-4bb1-9dd4-f707ea202f83",
-    "title": "Edited todo",
-    "description": "Updated description"
+    "Id": "f453dd17-d3f7-4bb1-9dd4-f707ea202f83",
+    "Title": "Edited todo",
+    "Description": "Updated description"
 }
 
 *)
