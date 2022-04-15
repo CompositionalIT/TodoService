@@ -1,5 +1,5 @@
 ﻿// Edit or remove this or the below line to regenerate on next build
-// Hash: b202986a2045ce26dd10dad750680587e3b8ee2f7ac737b75febc226d2c10d20
+// Hash: 0c9f7a707d2621345458c1ebd451c50506fe428c5d43541a24ec1a22c25e7d12
 
 //////////////////////////////////////////
 //
@@ -9,7 +9,7 @@
 //
 //////////////////////////////////////////
 
-module TodoDb
+module Db
 
 #nowarn "49"
 
@@ -849,6 +849,104 @@ SELECT * FROM dbo.Todo"""
           ``GetAllItems``(connectionString, null, null).ConfigureConnection(?configureConnection=configureConnection)
 
         static member WithConnection(connection, ?transaction) = ``GetAllItems``(null, connection, defaultArg transaction null)
+
+        member private this.ConfigureConnection(?configureConnection: SqlConnection -> unit) =
+          match configureConnection with
+          | None -> ()
+          | Some config -> this.configureConn <- config
+          this
+
+        member this.ExecuteAsync(?cancellationToken) =
+          executeQueryEagerAsync connStr conn tran this.configureConn (configureCmd this.userConfigureCmd) initOrdinals getItem [] (defaultArg cancellationToken CancellationToken.None)
+
+        member this.AsyncExecute() =
+          async {
+            let! ct = Async.CancellationToken
+            return! this.ExecuteAsync(ct) |> Async.AwaitTask
+          }
+
+        member this.ExecuteAsyncWithSyncRead(?cancellationToken) =
+          executeQueryEagerAsyncWithSyncRead connStr conn tran this.configureConn (configureCmd this.userConfigureCmd) initOrdinals getItem [] (defaultArg cancellationToken CancellationToken.None)
+
+        member this.AsyncExecuteWithSyncRead() =
+          async {
+            let! ct = Async.CancellationToken
+            return! this.ExecuteAsyncWithSyncRead(ct) |> Async.AwaitTask
+          }
+
+        member this.Execute() =
+          executeQueryEager connStr conn tran this.configureConn (configureCmd this.userConfigureCmd) initOrdinals getItem []
+
+        member this.LazyExecuteAsync(?cancellationToken) =
+          executeQueryLazyAsync connStr conn tran this.configureConn (configureCmd this.userConfigureCmd) initOrdinals getItem [] (defaultArg cancellationToken CancellationToken.None)
+
+        member this.LazyExecuteAsyncWithSyncRead(?cancellationToken) =
+          executeQueryLazyAsyncWithSyncRead connStr conn tran this.configureConn (configureCmd this.userConfigureCmd) initOrdinals getItem [] (defaultArg cancellationToken CancellationToken.None)
+
+        member this.LazyExecute() =
+          executeQueryLazy connStr conn tran this.configureConn (configureCmd this.userConfigureCmd) initOrdinals getItem []
+
+        member this.ExecuteSingleAsync(?cancellationToken) =
+          executeQuerySingleAsync connStr conn tran this.configureConn (configureCmd this.userConfigureCmd) initOrdinals getItem [] (defaultArg cancellationToken CancellationToken.None)
+
+        member this.AsyncExecuteSingle() =
+          async {
+            let! ct = Async.CancellationToken
+            return! this.ExecuteSingleAsync(ct) |> Async.AwaitTask
+          }
+
+        member this.ExecuteSingle() =
+          executeQuerySingle connStr conn tran this.configureConn (configureCmd this.userConfigureCmd) initOrdinals getItem []
+
+
+      type ``GetTodoStats`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+
+        let configureCmd userConfigureCmd (cmd: SqlCommand) =
+          cmd.CommandText <- """-- Queries\GetTodoStats.sql
+SELECT CompletionState, COUNT(*) AS TodoItems
+FROM
+(
+    SELECT
+        CASE WHEN (CompletedDate IS NULL) THEN 'Incomplete' ELSE 'Complete' END AS CompletionState
+    FROM dbo.Todo
+) src
+GROUP BY CompletionState"""
+          userConfigureCmd cmd
+
+        let mutable ``ordinal_CompletionState`` = 0
+        let mutable ``ordinal_TodoItems`` = 0
+
+        let initOrdinals (reader: SqlDataReader) =
+          ``ordinal_CompletionState`` <- reader.GetOrdinal "CompletionState"
+          ``ordinal_TodoItems`` <- reader.GetOrdinal "TodoItems"
+
+        let getItem (reader: SqlDataReader) =
+          let ``CompletionState`` = reader.GetString ``ordinal_CompletionState``
+          let ``TodoItems`` = if reader.IsDBNull ``ordinal_TodoItems`` then None else reader.GetInt32 ``ordinal_TodoItems`` |> Some
+          {|
+            ``CompletionState`` = ``CompletionState``
+            ``TodoItems`` = ``TodoItems``
+          |}
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        new() =
+          failwith "This constructor is for aiding reflection and type constraints only"
+          ``GetTodoStats``(null, null, null)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val configureConn : SqlConnection -> unit = ignore with get, set
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val userConfigureCmd : SqlCommand -> unit = ignore with get, set
+
+        member this.ConfigureCommand(configureCommand: SqlCommand -> unit) =
+          this.userConfigureCmd <- configureCommand
+          this
+
+        static member WithConnection(connectionString, ?configureConnection: SqlConnection -> unit) =
+          ``GetTodoStats``(connectionString, null, null).ConfigureConnection(?configureConnection=configureConnection)
+
+        static member WithConnection(connection, ?transaction) = ``GetTodoStats``(null, connection, defaultArg transaction null)
 
         member private this.ConfigureConnection(?configureConnection: SqlConnection -> unit) =
           match configureConnection with

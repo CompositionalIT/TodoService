@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="TodoDb.fs" />
+    <Compile Include="Db.fs" />
     <Compile Include="Domain.fs" />
     <Compile Include="Todo.Service.fs" />
     <Compile Include="Todo.Api.fs" />
@@ -17,6 +17,7 @@
     <PackageReference Include="Dapper" Version="2.0.123" />
     <PackageReference Include="Facil" Version="2.3.2" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="2.13.0" />
+    <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="2.13.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="4.1.0" />
     <PackageReference Include="Saturn" Version="0.16.1" />
   </ItemGroup>

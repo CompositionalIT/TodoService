@@ -11,8 +11,8 @@ rulesets:
 
     # The filename and namespace/module declaration of the generated file. The values
     # below are the defaults. You can remove them if you're happy with them.
-    filename: TodoDb.fs
-    namespaceOrModuleDeclaration: module TodoDb
+    filename: Db.fs
+    namespaceOrModuleDeclaration: module Db
     tableDtos:
       - include: .*
 

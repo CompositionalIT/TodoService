@@ -4,21 +4,24 @@ open FsToolkit.ErrorHandling
 open System
 
 module Result =
-    let optionToResultOption validator onNone v =
-        match v with
-        | None ->
-            onNone
-        | Some v ->
-            match validator v with
-            | Ok v ->
-                Ok (Some v)
-            | Error r ->
-                Error r
     let ofParseResult v =
         match v with
         | true, v -> Ok v
         | false, _ -> Error $"Parse failed: {v}"
 
+module Option =
+    /// If value is None, returns Ok None, otherwise runs the validator on Some value and wraps the result in Some.
+    /// Use this if you want to handle the case for optional data, when you want to validate data *only if there is some*.
+    let toResultOption validator value =
+        value
+        |> Option.map (validator >> Result.map Some)
+        |> Option.defaultWith (fun () -> Ok None)
+
+    // Maps None -> Error, Some x -> Ok x
+    let toResult errorOnNone value =
+        match value with
+        | None -> Error errorOnNone
+        | Some value -> Ok value
 
 type String255 =
     | String255 of string
@@ -56,7 +59,7 @@ type Todo =
         and! description =
             description
             |> Option.ofObj
-            |> Result.optionToResultOption (String255.TryCreate "Description") (Ok None)
+            |> Option.toResultOption (String255.TryCreate "Description")
         return {
             Id = TodoId.Create ()
             Title = title
