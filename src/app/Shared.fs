@@ -50,7 +50,7 @@ module Option =
         |> Option.defaultWith (fun () -> Ok None)
 
     // Maps None -> Error, Some x -> Ok x
-    let toResult errorOnNone value =
+    let toResult ifNone value =
         match value with
-        | None -> Error errorOnNone
+        | None -> Error ifNone
         | Some value -> Ok value

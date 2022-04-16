@@ -55,7 +55,7 @@ let createTodo (connectionString:string) (request:CreateTodoRequest) : Task<Serv
             :> Task
 }
 
-let getTodoById (connectionString:string) (todoId:string) : Task<ServiceResult<dbo.Todo>> = taskResult {
+let getTodoById (connectionString:string) (todoId:string) : Task<ServiceResult<_>> = taskResult {
     let! todoId =
         TodoId.TryParse "todoId" todoId
         |> Result.mapError ServiceError.ofValidationError
@@ -123,17 +123,11 @@ let getTodoStats (connectionString:string) = task {
     let! stats =
         DbQueries.GetTodoStats
             .WithConnection(connectionString)
-            .AsyncExecute()
-    let getStat =
-        let stats =
-            stats
-            |> Seq.map (fun r -> r.CompletionState, r.TodoItems)
-            |> Map
-        fun status ->
-            stats
-            |> Map.tryFind status
-            |> Option.bind id
-            |> Option.defaultValue 0
+            .ExecuteAsync()
+    let getStat status =
+        stats
+        |> Seq.tryPick (fun row -> if row.CompletionState = status then row.TodoItems else None)
+        |> Option.defaultValue 0
 
     return
         {|
