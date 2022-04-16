@@ -7,10 +7,15 @@
 
   <ItemGroup>
     <Compile Include="Db.fs" />
+    <Compile Include="Shared.fs" />
     <Compile Include="Domain.fs" />
     <Compile Include="Todo.Service.fs" />
     <Compile Include="Todo.Api.fs" />
     <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Watch Include="facil.yaml" />
   </ItemGroup>
 
   <ItemGroup>

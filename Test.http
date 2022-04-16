@@ -6,20 +6,41 @@ POST http://localhost:5000/todo/
     "description": "This is a second test"
 }
 
+### Create Todo - Validation errors
+POST http://localhost:5000/todo/
+
+{
+    "description": "This is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second test"
+}
+
 ### Get Todo
 http://localhost:5000/todo/f453dd17-d3f7-4bb1-9dd4-f707ea202f83
+
+### Get Todo - 404
+http://localhost:5000/todo/f453dd17-d3f7-4bb1-9dd4-f707ea202f8c
+
+### Get Todo - bad GUID
+http://localhost:5000/todo/f453dd17-d3f7-4bb1-9dd4-f707ea202f833
 
 ### Get all Todos
 http://localhost:5000/todo/
 
 ### Complete Todo
-PUT http://localhost:5000/todo/f453dd17-d3f7-4bb1-9dd4-f707ea202f82/complete
+PUT http://localhost:5000/todo/f453dd17-d3f7-4bb1-9dd4-f707ea202f83/complete
 
 ### Update Todo
 PUT http://localhost:5000/todo/
 
 {
     "id": "f453dd17-d3f7-4bb1-9dd4-f707ea202f83",
+    "title": "Edited todo",
+    "description": "Updated description"
+}
+
+### Update Todo - Validation error
+PUT http://localhost:5000/todo/
+
+{
     "title": "Edited todo",
     "description": "Updated description"
 }

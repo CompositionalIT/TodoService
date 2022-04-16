@@ -1,28 +1,14 @@
 module Todo.Service
 
 open Dapper
+open Db
+open Db.Scripts
+open Db.TableDtos
 open Domain
 open FsToolkit.ErrorHandling
 open Microsoft.Data.SqlClient
 open System
 open System.Threading.Tasks
-
-/// Represents an error occurred while executing a service call.
-type ValidationError<'T> =
-    | NotFound of string
-    | ValidationErrors of {| Field : string; Error : string |} list
-    | GenericError of 'T
-
-module ValidationError =
-    let create field message = {| Field = field; Error = message |}
-    let createOne field message = create field message |> List.singleton |> ValidationErrors
-
-module Result =
-    let ofRowsModified onNone rowsModified =
-        match rowsModified with
-        | 0 -> Error (NotFound onNone)
-        | 1 -> Ok ()
-        | _ -> Error (GenericError $"Too many rows modified ({rowsModified})")
 
 /// A sample implementation of a single DAL method using Dapper.
 module Dapper =
@@ -52,13 +38,12 @@ type EditTodoRequest =
         Description : string
     }
 
-let createTodo (connectionString:string) (request:CreateTodoRequest) = taskResult {
+let createTodo (connectionString:string) (request:CreateTodoRequest) : Task<ServiceResult> = taskResult {
     let! todo =
         Todo.TryCreate (request.Title, request.Description)
-        |> Result.mapError ValidationErrors
+        |> Result.mapError InvalidRequest
 
-    do! Db.Scripts
-            .Todo_Insert
+    do! Scripts.Todo_Insert
             .WithConnection(connectionString)
             .WithParameters(
                 todo.Id.Value,
@@ -70,35 +55,35 @@ let createTodo (connectionString:string) (request:CreateTodoRequest) = taskResul
             :> Task
 }
 
-let getTodoById (connectionString:string) (todoId:string) = taskResult {
+let getTodoById (connectionString:string) (todoId:string) : Task<ServiceResult<dbo.Todo>> = taskResult {
     let! todoId =
-        TodoId.TryParse todoId
-        |> Result.mapError (ValidationError.createOne "TodoId")
+        TodoId.TryParse "todoId" todoId
+        |> Result.mapError ServiceError.ofValidationError
 
     let! result =
-        Db.Scripts.Todo_ById
+        Scripts.Todo_ById
             .WithConnection(connectionString)
             .WithParameters(todoId.Value)
             .AsyncExecuteSingle()
 
     return!
         result
-        |> Option.toResult (NotFound $"Unknown Todo {todoId.Value}")
+        |> Option.toResult (DataNotFound $"Unknown Todo {todoId.Value}")
 }
 
 let getAllTodos (connectionString:string) =
-    Db.Scripts.Queries.GetAllItems
-            .WithConnection(connectionString)
-            .AsyncExecute()
+    DbQueries.GetAllItems
+        .WithConnection(connectionString)
+        .ExecuteAsync()
 
 // Create a function to complete a todo
-let completeTodo (connectionString:string) (todoId:string) = taskResult {
+let completeTodo (connectionString:string) (todoId:string) : Task<ServiceResult> = taskResult {
     let! todoId =
-        TodoId.TryParse todoId
-        |> Result.mapError (ValidationError.createOne "TodoId")
+        TodoId.TryParse "todoId" todoId
+        |> Result.mapError ServiceError.ofValidationError
 
     let! rowsModified =
-        Db.Scripts.Commands.CompleteTodo
+        DbCommands.CompleteTodo
             .WithConnection(connectionString)
             .WithParameters(DateTime.UtcNow, todoId.Value)
             .ExecuteAsync()
@@ -108,12 +93,12 @@ let completeTodo (connectionString:string) (todoId:string) = taskResult {
         |> Result.ofRowsModified $"Unknown Todo {todoId.Value}"
 }
 
-let editTodo (connectionString:string) (request:EditTodoRequest) = taskResult {
+let editTodo (connectionString:string) (request:EditTodoRequest) : Task<ServiceResult> = taskResult {
     let! todoDto =
         validation {
             let! title = String255.TryCreate "Title" request.Title
             and! description = String255.TryCreate "Description" request.Description
-            and! todoId = TodoId.TryCreate request.Id |> Result.mapError (ValidationError.create "Id")
+            and! todoId = TodoId.TryCreate "Id" request.Id
             return
                 {|
                     Id = todoId.Value
@@ -121,22 +106,22 @@ let editTodo (connectionString:string) (request:EditTodoRequest) = taskResult {
                     Description = description.Value
                 |}
         }
-        |> Result.mapError ValidationErrors
+        |> Result.mapError InvalidRequest
 
     let! rowsModified =
-        Db.Scripts.Commands.EditTodo
+        DbCommands.EditTodo
             .WithConnection(connectionString)
             .WithParameters(todoDto)
             .ExecuteAsync()
 
     return!
-       rowsModified
-       |> Result.ofRowsModified $"Unknown Todo {request.Id}"
+        rowsModified
+        |> Result.ofRowsModified $"Unknown Todo {request.Id}"
 }
 
 let getTodoStats (connectionString:string) = task {
     let! stats =
-        Db.Scripts.Queries.GetTodoStats
+        DbQueries.GetTodoStats
             .WithConnection(connectionString)
             .AsyncExecute()
     let getStat =

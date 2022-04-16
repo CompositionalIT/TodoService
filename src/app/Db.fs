@@ -1,5 +1,5 @@
 ﻿// Edit or remove this or the below line to regenerate on next build
-// Hash: 0c9f7a707d2621345458c1ebd451c50506fe428c5d43541a24ec1a22c25e7d12
+// Hash: 723e3d1b69e93eb0d858ce5d621ca7ce33582f65907c8c6ed749a382e698b824
 
 //////////////////////////////////////////
 //
@@ -618,14 +618,14 @@ WHERE
       ``Todo_Update_Executable``(this.connStr, this.conn, this.configureConn, this.userConfigureCmd, getSqlParams, [], this.tran)
 
 
-  module ``Commands`` =
+  module ``DbCommands`` =
 
 
       [<EditorBrowsable(EditorBrowsableState.Never)>]
       type ``CompleteTodo_Executable`` (connStr: string, conn: SqlConnection, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction) =
 
         let configureCmd sqlParams (cmd: SqlCommand) =
-          cmd.CommandText <- """-- Commands\CompleteTodo.sql
+          cmd.CommandText <- """-- DbCommands\CompleteTodo.sql
 UPDATE dbo.Todo
 SET CompletedDate = @Date
 WHERE Id = @Id"""
@@ -709,7 +709,7 @@ WHERE Id = @Id"""
       type ``EditTodo_Executable`` (connStr: string, conn: SqlConnection, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction) =
 
         let configureCmd sqlParams (cmd: SqlCommand) =
-          cmd.CommandText <- """-- Commands\EditTodo.sql
+          cmd.CommandText <- """-- DbCommands\EditTodo.sql
 UPDATE dbo.Todo
 SET Title = @Title,
     [Description] = @Description
@@ -793,13 +793,13 @@ WHERE Id = @Id"""
           ``EditTodo_Executable``(this.connStr, this.conn, this.configureConn, this.userConfigureCmd, getSqlParams, [], this.tran)
 
 
-  module ``Queries`` =
+  module ``DbQueries`` =
 
 
       type ``GetAllItems`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
 
         let configureCmd userConfigureCmd (cmd: SqlCommand) =
-          cmd.CommandText <- """-- Queries\GetAllItems.sql
+          cmd.CommandText <- """-- DbQueries\GetAllItems.sql
 SELECT * FROM dbo.Todo"""
           userConfigureCmd cmd
 
@@ -902,7 +902,7 @@ SELECT * FROM dbo.Todo"""
       type ``GetTodoStats`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
 
         let configureCmd userConfigureCmd (cmd: SqlCommand) =
-          cmd.CommandText <- """-- Queries\GetTodoStats.sql
+          cmd.CommandText <- """-- DbQueries\GetTodoStats.sql
 SELECT CompletionState, COUNT(*) AS TodoItems
 FROM
 (
