@@ -3,9 +3,7 @@ module Shared
 
 open Microsoft.AspNetCore.Http
 
-type ValidationError =
-    { Field : string; Error : string }
-    static member Create field message = { Field = field; Error = message }
+type ValidationError = string * string
 
 /// Represents an error occurred while executing a service call.
 type ServiceError =
@@ -31,9 +29,12 @@ module Result =
             onSuccess value next ctx
         | Error error ->
             match error with
-            | DataNotFound msg -> RequestErrors.NOT_FOUND msg next ctx
-            | InvalidRequest msgs -> RequestErrors.BAD_REQUEST msgs next ctx
-            | GenericError msg -> ServerErrors.INTERNAL_ERROR msg next ctx
+            | DataNotFound msg ->
+                RequestErrors.NOT_FOUND msg next ctx
+            | InvalidRequest msgs ->
+                RequestErrors.BAD_REQUEST (readOnlyDict msgs) next ctx
+            | GenericError msg ->
+                ServerErrors.INTERNAL_ERROR msg next ctx
 
     let ofRowsModified onNone rowsModified =
         match rowsModified with

@@ -39,7 +39,7 @@ type EditTodoRequest =
     }
 
 let createTodo (connectionString:string) (request:CreateTodoRequest) : Task<ServiceResult> = taskResult {
-    let! todo =
+    let! (todo:Todo) =
         Todo.TryCreate (request.Title, request.Description)
         |> Result.mapError InvalidRequest
 
@@ -56,8 +56,8 @@ let createTodo (connectionString:string) (request:CreateTodoRequest) : Task<Serv
 }
 
 let getTodoById (connectionString:string) (todoId:string) : Task<ServiceResult<_>> = taskResult {
-    let! todoId =
-        TodoId.TryParse "todoId" todoId
+    let! (todoId:TodoId) =
+        Result.tryCreate "todoId" todoId
         |> Result.mapError ServiceError.ofValidationError
 
     let! result =
@@ -78,8 +78,8 @@ let getAllTodos (connectionString:string) =
 
 // Create a function to complete a todo
 let completeTodo (connectionString:string) (todoId:string) : Task<ServiceResult> = taskResult {
-    let! todoId =
-        TodoId.TryParse "todoId" todoId
+    let! (todoId : TodoId) =
+        Result.tryCreate "todoId" todoId
         |> Result.mapError ServiceError.ofValidationError
 
     let! rowsModified =
@@ -96,9 +96,9 @@ let completeTodo (connectionString:string) (todoId:string) : Task<ServiceResult>
 let editTodo (connectionString:string) (request:EditTodoRequest) : Task<ServiceResult> = taskResult {
     let! todoDto =
         validation {
-            let! title = String255.TryCreate "Title" request.Title
-            and! description = String255.TryCreate "Description" request.Description
-            and! todoId = TodoId.TryCreate "Id" request.Id
+            let! (title : String255) = Result.tryCreate "Title" request.Title
+            and! (description : String255) = Result.tryCreate "Description" request.Description
+            and! (todoId : TodoId) = Result.tryCreate "Id" request.Id
             return
                 {|
                     Id = todoId.Value
