@@ -9,28 +9,36 @@ open System.Collections.Generic
 open Microsoft.Extensions.Logging
 
 
-type CustomerDatabase () =
-    let customers = Dictionary<int, {| Name : string |}>()
-    member _.LoadCustomer (customerId:int) =
-        if customers.ContainsKey customerId then customers.[customerId]
+type CustomerDatabase() =
+    let customers = Dictionary<int, {| Name: string |}>()
+
+    member _.LoadCustomer(customerId: int) =
+        if customers.ContainsKey customerId then
+            customers.[customerId]
         else
             let fromDb = {| Name = "Isaac" |}
             customers[customerId] <- fromDb
             fromDb
 
-type CustomerService (db:CustomerDatabase, logger:ILogger) =
-    member _.TryLoadCustomer (customerId:int) =
-        if customerId < 99 then failwith "Bad request"
+type CustomerService(db: CustomerDatabase, logger: ILogger) =
+    member _.TryLoadCustomer(customerId: int) =
+        if customerId < 99 then
+            failwith "Bad request"
         else
             db.LoadCustomer(customerId)
 
 
-let configureServices (services:IServiceCollection) =
+let configureServices (services: IServiceCollection) =
     // IOC Containers (Inversion of Control Container)
 
-    services.AddTransient<CustomerDatabase>() |> ignore
+    services.AddTransient<CustomerDatabase>()
+    |> ignore
 
-    let service = services.BuildServiceProvider().GetService<CustomerService>()
+    let service =
+        services
+            .BuildServiceProvider()
+            .GetService<CustomerService>()
+
     let c = service.TryLoadCustomer 123
 
     services.AddSingleton<Json.ISerializer>(
@@ -46,9 +54,10 @@ let configureServices (services:IServiceCollection) =
     )
 
 
-let app = application {
-    use_router Todo.Api.giraffeRouter
-    service_config configureServices
-}
+let app =
+    application {
+        use_router Todo.Api.giraffeRouter
+        service_config configureServices
+    }
 
 run app

@@ -10,13 +10,15 @@ type ServiceError =
     | DataNotFound of string
     | InvalidRequest of ValidationError list
     | GenericError of string
-    static member ofValidationError error = error |> List.singleton |> InvalidRequest
+    static member ofValidationError error =
+        error |> List.singleton |> InvalidRequest
 
 type ServiceResult<'T> = Result<'T, ServiceError>
 type ServiceResult = ServiceResult<unit>
 
 module Result =
     open Giraffe
+
     let ofTryParse originalValue v =
         match v with
         | true, v -> Ok v
@@ -25,22 +27,18 @@ module Result =
     /// Converts a Service Errors into an HTTPHandler response in a consistent way.
     let toHttpHandler next ctx onSuccess result =
         match result with
-        | Ok value ->
-            onSuccess value next ctx
+        | Ok value -> onSuccess value next ctx
         | Error error ->
             match error with
-            | DataNotFound msg ->
-                RequestErrors.NOT_FOUND msg next ctx
-            | InvalidRequest msgs ->
-                RequestErrors.BAD_REQUEST (readOnlyDict msgs) next ctx
-            | GenericError msg ->
-                ServerErrors.INTERNAL_ERROR msg next ctx
+            | DataNotFound msg -> RequestErrors.NOT_FOUND msg next ctx
+            | InvalidRequest msgs -> RequestErrors.BAD_REQUEST (readOnlyDict msgs) next ctx
+            | GenericError msg -> ServerErrors.INTERNAL_ERROR msg next ctx
 
     let ofRowsModified onNone rowsModified =
         match rowsModified with
-        | 0 -> Error (DataNotFound onNone)
-        | 1 -> Ok ()
-        | _ -> Error (GenericError $"Too many rows modified ({rowsModified})")
+        | 0 -> Error(DataNotFound onNone)
+        | 1 -> Ok()
+        | _ -> Error(GenericError $"Too many rows modified ({rowsModified})")
 
 module Option =
     /// If value is None, returns Ok None, otherwise runs the validator on Some value and wraps the result in Some.
