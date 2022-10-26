@@ -26,21 +26,22 @@ module Result =
         | false, _ -> Error $"Parse failed: '{originalValue}'"
 
     /// Converts a Service Errors into an HTTPHandler response in a consistent way.
-    let toHttpHandler next ctx onSuccess result =
+    let toHttpHandler result onSuccess : HttpHandler =
         match result with
-        | Ok value -> onSuccess value next ctx
-        | Error error ->
-            match error with
-            | DataNotFound msg -> RequestErrors.NOT_FOUND msg next ctx
-            | InvalidRequest msgs -> RequestErrors.BAD_REQUEST (readOnlyDict msgs) next ctx
-            | GenericError msg -> ServerErrors.INTERNAL_ERROR msg next ctx
+        | Ok value -> onSuccess value
+        | Error (DataNotFound msg) -> RequestErrors.NOT_FOUND msg
+        | Error (InvalidRequest msgs) -> RequestErrors.BAD_REQUEST (readOnlyDict msgs)
+        | Error (GenericError msg) -> ServerErrors.INTERNAL_ERROR msg
 
+    let toHttpHandlerNoOutput (result:ServiceResult) : HttpHandler =
+        toHttpHandler result (fun _ next ctx -> next ctx)
+        
     let ofRowsModified onNone rowsModified =
         match rowsModified with
         | 0 -> Error(DataNotFound onNone)
         | 1 -> Ok()
         | _ -> Error(GenericError $"Too many rows modified ({rowsModified})")
-
+        
 module Option =
     /// If value is None, returns Ok None, otherwise runs the validator on Some value and wraps the result in Some.
     /// Use this if you want to handle the case for optional data, when you want to validate data *only if there is some*.
