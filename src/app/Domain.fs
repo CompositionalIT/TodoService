@@ -16,6 +16,7 @@ type SafeString =
 type String255 =
     private
     | String255 of string
+
     static member TryCreate value =
         SafeString.TryCreate(value, String255, maxLength = 255)
 
@@ -26,6 +27,7 @@ type String255 =
 type TodoId =
     private
     | TodoId of Guid
+
     member this.Value =
         match this with
         | TodoId v -> v
@@ -39,10 +41,7 @@ type TodoId =
             Ok(TodoId todoId)
 
     static member TryCreate(guid: string) =
-        guid
-        |> Guid.TryParse
-        |> Result.ofTryParse guid
-        |> Result.map TodoId
+        guid |> Guid.TryParse |> Result.ofTryParse guid |> Result.map TodoId
 
 type Todo =
     {
@@ -53,21 +52,19 @@ type Todo =
         CompletedDate: DateTime option
     }
 
-    static member TryCreate(title, description) =
-        validation {
-            let! title = title |> Result.tryCreate "Title"
+    static member TryCreate(title, description) = validation {
+        let! title = title |> Result.tryCreate "Title"
 
-            and! description =
-                description
-                |> Option.ofObj
-                |> Option.toResultOption (Result.tryCreate "Description")
+        and! description =
+            description
+            |> Option.ofObj
+            |> Option.toResultOption (Result.tryCreate "Description")
 
-            return
-                {
-                    Id = TodoId.Create()
-                    Title = title
-                    Description = description
-                    CreatedDate = DateTime.UtcNow
-                    CompletedDate = None
-                }
+        return {
+            Id = TodoId.Create()
+            Title = title
+            Description = description
+            CreatedDate = DateTime.UtcNow
+            CompletedDate = None
         }
+    }

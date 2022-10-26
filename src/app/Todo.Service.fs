@@ -3,7 +3,6 @@ module Todo.Service
 open Dapper
 open Db
 open Db.Scripts
-open Db.TableDtos
 open Domain
 open FsToolkit.ErrorHandling
 open Microsoft.Data.SqlClient
@@ -15,17 +14,13 @@ module Dapper =
     let saveUsingDapper connectionString todo =
         let conn = new SqlConnection(connectionString)
 
-        let parameters =
-            {|
-                Id = todo.Id.Value
-                Title = todo.Title.Value
-                Description =
-                    todo.Description
-                    |> Option.map (fun r -> r.Value)
-                    |> Option.toObj
-                CreatedDate = todo.CreatedDate
-                CompletedDate = todo.CompletedDate |> Option.toNullable
-            |}
+        let parameters = {|
+            Id = todo.Id.Value
+            Title = todo.Title.Value
+            Description = todo.Description |> Option.map (fun r -> r.Value) |> Option.toObj
+            CreatedDate = todo.CreatedDate
+            CompletedDate = todo.CompletedDate |> Option.toNullable
+        |}
 
         conn.ExecuteAsync(
             "INSERT INTO dbo.Todo (Id, Title, Description, CreatedDate, CompletedDate)
@@ -35,126 +30,101 @@ module Dapper =
 
 type CreateTodoRequest = { Title: string; Description: string }
 
-type EditTodoRequest =
-    {
-        Id: Guid
-        Title: string
-        Description: string
-    }
+type EditTodoRequest = {
+    Id: Guid
+    Title: string
+    Description: string
+}
 
-let createTodo (connectionString: string) (request: CreateTodoRequest) : Task<ServiceResult> =
-    taskResult {
-        let! (todo: Todo) =
-            Todo.TryCreate(request.Title, request.Description)
-            |> Result.mapError InvalidRequest
+let createTodo (connectionString: string) (request: CreateTodoRequest) : Task<ServiceResult> = taskResult {
+    let! (todo: Todo) =
+        Todo.TryCreate(request.Title, request.Description)
+        |> Result.mapError InvalidRequest
 
-        do!
-            Scripts
-                .Todo_Insert
-                .WithConnection(connectionString)
-                .WithParameters(
-                    todo.Id.Value,
-                    todo.Title.Value,
-                    todo.Description |> Option.map (fun r -> r.Value),
-                    todo.CreatedDate,
-                    todo.CompletedDate
-                )
-                .ExecuteAsync()
-            :> Task
-    }
+    do!
+        Todo_Insert
+            .WithConnection(connectionString)
+            .WithParameters(
+                todo.Id.Value,
+                todo.Title.Value,
+                todo.Description |> Option.map (fun r -> r.Value),
+                todo.CreatedDate,
+                todo.CompletedDate
+            )
+            .ExecuteAsync()
+        :> Task
+}
 
-let getTodoById (connectionString: string) (todoId: string) : Task<ServiceResult<_>> =
-    taskResult {
-        let! (todoId: TodoId) =
-            Result.tryCreate "todoId" todoId
-            |> Result.mapError ServiceError.ofValidationError
+let getTodoById (connectionString: string) (todoId: string) : Task<ServiceResult<_>> = taskResult {
+    let! (todoId: TodoId) =
+        Result.tryCreate "todoId" todoId
+        |> Result.mapError ServiceError.ofValidationError
 
-        let! result =
-            Scripts
-                .Todo_ById
-                .WithConnection(connectionString)
-                .WithParameters(todoId.Value)
-                .AsyncExecuteSingle()
+    let! result =
+        Todo_ById
+            .WithConnection(connectionString)
+            .WithParameters(todoId.Value)
+            .AsyncExecuteSingle()
 
-        return!
-            result
-            |> Option.toResult (DataNotFound $"Unknown Todo {todoId.Value}")
-    }
+    return! result |> Option.toResult (DataNotFound $"Unknown Todo {todoId.Value}")
+}
 
 let getAllTodos (connectionString: string) =
-    DbQueries
-        .GetAllItems
-        .WithConnection(connectionString)
-        .ExecuteAsync()
+    DbQueries.GetAllItems.WithConnection(connectionString).ExecuteAsync()
 
 // Create a function to complete a todo
-let completeTodo (connectionString: string) (todoId: string) : Task<ServiceResult> =
-    taskResult {
-        let! (todoId: TodoId) =
-            Result.tryCreate "todoId" todoId
-            |> Result.mapError ServiceError.ofValidationError
+let completeTodo (connectionString: string) (todoId: string) : Task<ServiceResult> = taskResult {
+    // Using a dedicated domain type and associated build member for validation.
+    let! (todoId: TodoId) =
+        Result.tryCreate "todoId" todoId
+        |> Result.mapError ServiceError.ofValidationError
 
-        let! rowsModified =
-            DbCommands
-                .CompleteTodo
-                .WithConnection(connectionString)
-                .WithParameters(DateTime.UtcNow, todoId.Value)
-                .ExecuteAsync()
+    let! rowsModified =
+        DbCommands
+            .CompleteTodo
+            .WithConnection(connectionString)
+            .WithParameters(DateTime.UtcNow, todoId.Value)
+            .ExecuteAsync()
 
-        return!
-            rowsModified
-            |> Result.ofRowsModified $"Unknown Todo {todoId.Value}"
-    }
+    return! rowsModified |> Result.ofRowsModified $"Unknown Todo {todoId.Value}"
+}
 
-let editTodo (connectionString: string) (request: EditTodoRequest) : Task<ServiceResult> =
-    taskResult {
-        let! todoDto =
-            validation {
-                let! (title: String255) = Result.tryCreate "Title" request.Title
-                and! (description: String255) = Result.tryCreate "Description" request.Description
-                and! (todoId: TodoId) = Result.tryCreate "Id" request.Id
+let editTodo (connectionString: string) (request: EditTodoRequest) : Task<ServiceResult> = taskResult {
+    // An example of doing "inline" validation.
+    let! todoDto =
+        validation {
+            let! (title: String255) = Result.tryCreate "Title" request.Title
+            and! (description: String255) = Result.tryCreate "Description" request.Description
+            and! (todoId: TodoId) = Result.tryCreate "Id" request.Id
 
-                return
-                    {|
-                        Id = todoId.Value
-                        Title = title.Value
-                        Description = description.Value
-                    |}
-            }
-            |> Result.mapError InvalidRequest
-
-        let! rowsModified =
-            DbCommands
-                .EditTodo
-                .WithConnection(connectionString)
-                .WithParameters(todoDto)
-                .ExecuteAsync()
-
-        return!
-            rowsModified
-            |> Result.ofRowsModified $"Unknown Todo {request.Id}"
-    }
-
-let getTodoStats (connectionString: string) =
-    task {
-        let! stats =
-            DbQueries
-                .GetTodoStats
-                .WithConnection(connectionString)
-                .ExecuteAsync()
-
-        let getStat status =
-            stats
-            |> Seq.tryPick (fun row ->
-                if row.CompletionState = status then
-                    row.TodoItems
-                else
-                    None)
-            |> Option.defaultValue 0
-
-        return
-            {|
-                Completed = getStat "Complete"
-                Incomplete = getStat "Incomplete"
+            return {|
+                Id = todoId.Value
+                Title = title.Value
+                Description = description.Value
             |}
-    }
+        }
+        |> Result.mapError InvalidRequest
+
+    let! rowsModified =
+        DbCommands
+            .EditTodo
+            .WithConnection(connectionString)
+            .WithParameters(todoDto)
+            .ExecuteAsync()
+
+    return! rowsModified |> Result.ofRowsModified $"Unknown Todo {request.Id}"
+}
+
+let getTodoStats (connectionString: string) = task {
+    let! stats = DbQueries.GetTodoStats.WithConnection(connectionString).ExecuteAsync()
+
+    let getStat status =
+        stats
+        |> Seq.tryPick (fun row -> if row.CompletionState = status then row.TodoItems else None)
+        |> Option.defaultValue 0
+
+    return {|
+        Completed = getStat "Complete"
+        Incomplete = getStat "Incomplete"
+    |}
+}

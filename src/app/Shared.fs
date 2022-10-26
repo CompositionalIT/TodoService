@@ -10,6 +10,7 @@ type ServiceError =
     | DataNotFound of string
     | InvalidRequest of ValidationError list
     | GenericError of string
+
     static member ofValidationError error =
         error |> List.singleton |> InvalidRequest
 
