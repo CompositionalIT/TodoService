@@ -2,23 +2,14 @@ namespace Domain
 
 open FsToolkit.ErrorHandling
 open System
-
-type SafeString =
-    static member TryCreate(value: string, builder, ?minLength, ?maxLength) =
-        match value, minLength, maxLength with
-        | null, _, _ -> Error "No value provided."
-        | value, Some min, _ when value.Length < min ->
-            Error $"Field is too short (min is {min}, but was {value.Length})."
-        | value, _, Some max when value.Length > max ->
-            Error $"Field is too long (max is {max}, but was {value.Length})."
-        | value, _, _ -> Ok(builder value)
+open Validus
 
 type String255 =
     private
     | String255 of string
 
-    static member TryCreate value =
-        SafeString.TryCreate(value, String255, maxLength = 255)
+    static member TryCreate field value =
+        Check.String.lessThanLen 255 field value |> Result.map String255
 
     member this.Value =
         match this with
@@ -34,14 +25,14 @@ type TodoId =
 
     static member Create() = TodoId(Guid.NewGuid())
 
-    static member TryCreate todoId =
-        if todoId = Guid.Empty then
-            Error "This is the empty GUID."
-        else
-            Ok(TodoId todoId)
+    static member TryCreate(field, todoId) : _ ValidationResult =
+        Check.Guid.notEmpty field todoId |> Result.map TodoId
 
-    static member TryCreate(guid: string) =
-        guid |> Guid.TryParse |> Result.ofTryParse guid |> Result.map TodoId
+    static member TryCreate(field, guid: string) =
+        guid
+        |> Guid.TryParse
+        |> Result.ofParseResult field guid
+        |> Result.bind (fun todoId -> TodoId.TryCreate(field, todoId))
 
 type Todo =
     {
@@ -52,13 +43,13 @@ type Todo =
         CompletedDate: DateTime option
     }
 
-    static member TryCreate(title, description) = validation {
-        let! title = title |> Result.tryCreate "Title"
+    static member TryCreate(title, description) = validate {
+        let! title = title |> String255.TryCreate "Title"
 
         and! description =
             description
             |> Option.ofObj
-            |> Option.toResultOption (Result.tryCreate "Description")
+            |> Option.toResultOption (String255.TryCreate "Description")
 
         return {
             Id = TodoId.Create()

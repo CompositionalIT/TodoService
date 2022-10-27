@@ -1,13 +1,14 @@
 module Todo.Service
 
 open Dapper
-open Db
 open Db.Scripts
 open Domain
 open FsToolkit.ErrorHandling
 open Microsoft.Data.SqlClient
 open System
 open System.Threading.Tasks
+open Validus
+open Validus.Operators
 
 /// A sample implementation of a single DAL method using Dapper.
 module Dapper =
@@ -56,9 +57,7 @@ let createTodo (connectionString: string) (request: CreateTodoRequest) : Task<Se
 }
 
 let getTodoById (connectionString: string) (todoId: string) : Task<ServiceResult<_>> = taskResult {
-    let! (todoId: TodoId) =
-        Result.tryCreate "todoId" todoId
-        |> Result.mapError ServiceError.ofValidationError
+    let! todoId = TodoId.TryCreate("todoId", todoId) |> Result.mapError InvalidRequest
 
     let! result =
         Todo_ById
@@ -72,12 +71,9 @@ let getTodoById (connectionString: string) (todoId: string) : Task<ServiceResult
 let getAllTodos (connectionString: string) =
     DbQueries.GetAllItems.WithConnection(connectionString).ExecuteAsync()
 
-// Create a function to complete a todo
 let completeTodo (connectionString: string) (todoId: string) : Task<ServiceResult> = taskResult {
     // Using a dedicated domain type and associated build member for validation.
-    let! (todoId: TodoId) =
-        Result.tryCreate "todoId" todoId
-        |> Result.mapError ServiceError.ofValidationError
+    let! todoId = TodoId.TryCreate("todoId", todoId) |> Result.mapError InvalidRequest
 
     let! rowsModified =
         DbCommands
@@ -92,10 +88,10 @@ let completeTodo (connectionString: string) (todoId: string) : Task<ServiceResul
 let editTodo (connectionString: string) (request: EditTodoRequest) : Task<ServiceResult> = taskResult {
     // An example of doing "inline" validation.
     let! todoDto =
-        validation {
-            let! (title: String255) = Result.tryCreate "Title" request.Title
-            and! (description: String255) = Result.tryCreate "Description" request.Description
-            and! (todoId: TodoId) = Result.tryCreate "Id" request.Id
+        validate {
+            let! title = (Check.String.notEmpty >=> String255.TryCreate) "Title" request.Title
+            and! description = String255.TryCreate "Description" request.Description
+            and! todoId = TodoId.TryCreate("Id", request.Id)
 
             return {|
                 Id = todoId.Value

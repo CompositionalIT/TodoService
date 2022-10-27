@@ -7,7 +7,7 @@ configs:
   - envVars: ""
 
 rulesets:
-  - connectionString: Data Source=localhost,1434;Database=Todo;User=sa;Password=yourStrong(!)Password; TrustServerCertificate=True
+  - connectionString: Data Source=localhost,1433;Database=TodoDb;User=sa;Password=yourStrong(!)Password; TrustServerCertificate=True
 
     # The filename and namespace/module declaration of the generated file. The values
     # below are the defaults. You can remove them if you're happy with them.

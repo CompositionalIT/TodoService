@@ -13,12 +13,12 @@ type HttpContext with
 let createTodo next (ctx: HttpContext) = task {
     let! request = ctx.BindJsonAsync<Service.CreateTodoRequest>()
     let! result = Service.createTodo ctx.TodoDbConnectionString request
-    return! Result.toHttpHandlerNoOutput result next ctx
+    return! Result.toHttpHandler result next ctx
 }
 
 let getTodo (todoId: string) next (ctx: HttpContext) = task {
     let! result = Service.getTodoById ctx.TodoDbConnectionString todoId
-    return! Result.toHttpHandler result json next ctx
+    return! Result.toHttpHandler (result, json) next ctx
 }
 
 let getAllTodos next (ctx: HttpContext) = task {
@@ -28,14 +28,14 @@ let getAllTodos next (ctx: HttpContext) = task {
 
 let completeTodo (todoId: string) next (ctx: HttpContext) = task {
     let! result = Service.completeTodo ctx.TodoDbConnectionString todoId
-    return! Result.toHttpHandlerNoOutput result next ctx
+    return! Result.toHttpHandler result next ctx
 }
 
 // Create a function to edit the todo's title and description
 let editTodo next (ctx: HttpContext) = task {
     let! request = ctx.BindJsonAsync<Service.EditTodoRequest>()
     let! result = Service.editTodo ctx.TodoDbConnectionString request
-    return! Result.toHttpHandlerNoOutput result next ctx
+    return! Result.toHttpHandler result next ctx
 }
 
 let getTodoStats next (ctx: HttpContext) = task {
@@ -50,7 +50,7 @@ let giraffeRouter: HttpHandler =
         GET >=> routef "/todo/%s" getTodo
         POST >=> route "/todo/" >=> createTodo
         PUT >=> route "/todo/" >=> editTodo
-        
+
         GET >=> route "/todo/stats" >=> getTodoStats
         PUT >=> routef "/todo/%s/complete" completeTodo
     ]

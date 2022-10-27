@@ -30,6 +30,7 @@
         <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="2.13.0" />
         <PackageReference Include="Microsoft.Data.SqlClient" Version="4.1.0" />
         <PackageReference Include="Saturn" Version="0.16.1" />
+        <PackageReference Include="Validus" Version="4.0.1" />
     </ItemGroup>
 
 </Project>
