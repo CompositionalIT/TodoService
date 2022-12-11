@@ -1,0 +1,29 @@
+﻿### Get all todos
+GET http://localhost:5000/todo/
+
+### Create a todo
+POST http://localhost:5000/todo/
+Content-Type: application/json
+
+{
+  "Title": "Learn F#",
+  "Description": "Learn all about the language"
+}
+
+### Get a specific todo
+GET http://localhost:5000/todo/3e805c96-dc55-4165-99b1-d216b265f34c
+
+### Edit a todo
+PUT http://localhost:5000/todo/3e805c96-dc55-4165-99b1-d216b265f34c
+Content-Type: application/json
+
+{
+  "Title": "Learn F# Edited",
+  "Description": "Learn all about the language, but for real!"
+}
+
+### Complete a todo
+PUT http://localhost:5000/todo/3e805c96-dc55-4165-99b1-d216b265f34c/complete
+
+### Get stats
+GET http://localhost:5000/todo/stats

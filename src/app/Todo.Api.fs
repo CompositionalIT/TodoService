@@ -8,7 +8,9 @@ open Saturn
 type HttpContext with
 
     member this.TodoDbConnectionString =
-        this.GetService<IConfiguration>().GetConnectionString "TodoDb"
+        match this.GetService<IConfiguration>().GetConnectionString "TodoDb" with
+        | null -> failwith "Missing connection string"
+        | v -> v
 
 let createTodo next (ctx: HttpContext) = task {
     let! request = ctx.BindJsonAsync<Service.CreateTodoRequest>()
@@ -32,9 +34,18 @@ let completeTodo (todoId: string) next (ctx: HttpContext) = task {
 }
 
 // Create a function to edit the todo's title and description
-let editTodo next (ctx: HttpContext) = task {
-    let! request = ctx.BindJsonAsync<Service.EditTodoRequest>()
-    let! result = Service.editTodo ctx.TodoDbConnectionString request
+let editTodo todoId next (ctx: HttpContext) = task {
+    let! request = ctx.BindJsonAsync<Service.RawTodo>()
+
+    let! result =
+        Service.editTodo
+            ctx.TodoDbConnectionString
+            {
+                Title = request.Title
+                Description = request.Description
+                Id = todoId
+            }
+
     return! Result.toHttpHandler result next ctx
 }
 
@@ -47,11 +58,12 @@ let getTodoStats next (ctx: HttpContext) = task {
 let giraffeRouter: HttpHandler =
     choose [
         GET >=> route "/todo/" >=> getAllTodos
-        GET >=> routef "/todo/%s" getTodo
-        POST >=> route "/todo/" >=> createTodo
-        PUT >=> route "/todo/" >=> editTodo
-
         GET >=> route "/todo/stats" >=> getTodoStats
+
+        POST >=> route "/todo/" >=> createTodo
+
+        GET >=> routef "/todo/%s" getTodo
+        PUT >=> routef "/todo/%s" editTodo
         PUT >=> routef "/todo/%s/complete" completeTodo
     ]
 
@@ -59,7 +71,7 @@ let giraffeRouter: HttpHandler =
 let saturnRouter = router {
     get "/todo/" getAllTodos
     getf "/todo/%s" getTodo
-    put "/todo/" editTodo
+    putf "/todo/%s" editTodo
     post "/todo/" createTodo
 
     get "/todo/stats" getTodoStats

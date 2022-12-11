@@ -31,8 +31,10 @@ module Dapper =
 
 type CreateTodoRequest = { Title: string; Description: string }
 
+type RawTodo = { Title: string; Description: string }
+
 type EditTodoRequest = {
-    Id: Guid
+    Id: string
     Title: string
     Description: string
 }
@@ -85,7 +87,7 @@ let completeTodo (connectionString: string) (todoId: string) : Task<ServiceResul
     return! rowsModified |> Result.ofRowsModified $"Unknown Todo {todoId.Value}"
 }
 
-let editTodo (connectionString: string) (request: EditTodoRequest) : Task<ServiceResult> = taskResult {
+let editTodo (connectionString: string) request : Task<ServiceResult> = taskResult {
     // An example of doing "inline" validation.
     let! todoDto =
         validate {

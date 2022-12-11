@@ -3,13 +3,15 @@ namespace Domain
 open FsToolkit.ErrorHandling
 open System
 open Validus
+open Validus.Operators
 
 type String255 =
     private
     | String255 of string
 
     static member TryCreate field value =
-        Check.String.lessThanLen 255 field value |> Result.map String255
+        (Check.String.notEmpty >=> Check.String.lessThanLen 255) field value
+        |> Result.map String255
 
     member this.Value =
         match this with

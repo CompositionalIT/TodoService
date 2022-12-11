@@ -10,7 +10,7 @@ module Infrastructure =
     let jsonSerializer =
         let options =
             JsonSerializerOptions(
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase, // Emit camel case JSON
+                // PropertyNamingPolicy = JsonNamingPolicy.CamelCase, // Require camel case JSON
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping // Allow unescaped JSON
             )
         // options.Converters.Add(JsonFSharpConverter(allowNullFields = true)) // Nice F# JSON serialization
