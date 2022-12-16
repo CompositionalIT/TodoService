@@ -45,8 +45,13 @@ type Todo =
         CompletedDate: DateTime option
     }
 
-    static member TryCreate(title, description) = validate {
+    static member TryCreate(title, description, todoId) = validate {
         let! title = title |> String255.TryCreate "Title"
+
+        let! todoId =
+            match todoId with
+            | Some (todoId: Guid) -> TodoId.TryCreate("TodoId", todoId)
+            | None -> TodoId.Create() |> Ok
 
         and! description =
             description
@@ -54,7 +59,7 @@ type Todo =
             |> Option.toResultOption (String255.TryCreate "Description")
 
         return {
-            Id = TodoId.Create()
+            Id = todoId
             Title = title
             Description = description
             CreatedDate = DateTime.UtcNow

@@ -1,5 +1,5 @@
 ﻿// Edit or remove this or the below line to regenerate on next build
-// Hash: 569102806d9eb31a1059063f095eb70c5d62aeb1d07db64ec6e84c2689e988df
+// Hash: 753070c148521bb28ef0bd544c71b7cb02b001ae16af96be405b25147ba01a56
 
 //////////////////////////////////////////
 //
@@ -619,6 +619,52 @@ WHERE
 
 
   module ``DbCommands`` =
+
+
+      type ``ClearAllTodos`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+
+        let configureCmd userConfigureCmd (cmd: SqlCommand) =
+          cmd.CommandText <- """-- DbCommands\ClearAllTodos.sql
+DELETE FROM dbo.Todo"""
+          userConfigureCmd cmd
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        new() =
+          failwith "This constructor is for aiding reflection and type constraints only"
+          ``ClearAllTodos``(null, null, null)
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val configureConn : SqlConnection -> unit = ignore with get, set
+
+        [<EditorBrowsable(EditorBrowsableState.Never)>]
+        member val userConfigureCmd : SqlCommand -> unit = ignore with get, set
+
+        member this.ConfigureCommand(configureCommand: SqlCommand -> unit) =
+          this.userConfigureCmd <- configureCommand
+          this
+
+        static member WithConnection(connectionString, ?configureConnection: SqlConnection -> unit) =
+          ``ClearAllTodos``(connectionString, null, null).ConfigureConnection(?configureConnection=configureConnection)
+
+        static member WithConnection(connection, ?transaction) = ``ClearAllTodos``(null, connection, defaultArg transaction null)
+
+        member private this.ConfigureConnection(?configureConnection: SqlConnection -> unit) =
+          match configureConnection with
+          | None -> ()
+          | Some config -> this.configureConn <- config
+          this
+
+        member this.ExecuteAsync(?cancellationToken) =
+          executeNonQueryAsync connStr conn tran this.configureConn (configureCmd this.userConfigureCmd) [] (defaultArg cancellationToken CancellationToken.None)
+
+        member this.AsyncExecute() =
+          async {
+            let! ct = Async.CancellationToken
+            return! this.ExecuteAsync(ct) |> Async.AwaitTask
+          }
+
+        member this.Execute() =
+          executeNonQuery connStr conn tran this.configureConn (configureCmd this.userConfigureCmd) []
 
 
       [<EditorBrowsable(EditorBrowsableState.Never)>]

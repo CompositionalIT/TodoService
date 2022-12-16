@@ -29,7 +29,11 @@ module Dapper =
             parameters
         )
 
-type CreateTodoRequest = { Title: string; Description: string }
+type CreateTodoRequest = {
+    TodoId: Guid Nullable
+    Title: string
+    Description: string
+}
 
 type RawTodo = { Title: string; Description: string }
 
@@ -41,7 +45,7 @@ type EditTodoRequest = {
 
 let createTodo (connectionString: string) (request: CreateTodoRequest) : Task<ServiceResult> = taskResult {
     let! (todo: Todo) =
-        Todo.TryCreate(request.Title, request.Description)
+        Todo.TryCreate(request.Title, request.Description, Option.ofNullable request.TodoId)
         |> Result.mapError InvalidRequest
 
     do!
@@ -112,6 +116,9 @@ let editTodo (connectionString: string) request : Task<ServiceResult> = taskResu
 
     return! rowsModified |> Result.ofRowsModified $"Unknown Todo {request.Id}"
 }
+
+let clearAllTodos (connectionString: string) =
+    DbCommands.ClearAllTodos.WithConnection(connectionString).ExecuteAsync() :> Task
 
 let getTodoStats (connectionString: string) = task {
     let! stats = DbQueries.GetTodoStats.WithConnection(connectionString).ExecuteAsync()
