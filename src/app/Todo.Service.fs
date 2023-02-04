@@ -82,8 +82,7 @@ let completeTodo (connectionString: string) (todoId: string) : Task<ServiceResul
     let! todoId = TodoId.TryCreate("todoId", todoId) |> Result.mapError InvalidRequest
 
     let! rowsModified =
-        DbCommands
-            .CompleteTodo
+        DbCommands.CompleteTodo
             .WithConnection(connectionString)
             .WithParameters(DateTime.UtcNow, todoId.Value)
             .ExecuteAsync()
@@ -108,8 +107,7 @@ let editTodo (connectionString: string) request : Task<ServiceResult> = taskResu
         |> Result.mapError InvalidRequest
 
     let! rowsModified =
-        DbCommands
-            .EditTodo
+        DbCommands.EditTodo
             .WithConnection(connectionString)
             .WithParameters(todoDto)
             .ExecuteAsync()

@@ -50,7 +50,7 @@ type Todo =
 
         let! todoId =
             match todoId with
-            | Some (todoId: Guid) -> TodoId.TryCreate("TodoId", todoId)
+            | Some(todoId: Guid) -> TodoId.TryCreate("TodoId", todoId)
             | None -> TodoId.Create() |> Ok
 
         and! description =

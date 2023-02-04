@@ -23,14 +23,13 @@ type Result =
 
     /// Converts a Service Errors into an HTTPHandler response in a consistent way.
     static member toHttpHandler<'T>(result: 'T ServiceResult, ?onSuccess: 'T -> HttpHandler) : HttpHandler =
-
         match result with
         | Ok value ->
             let onSuccess = defaultArg onSuccess (fun _ next ctx -> next ctx)
             onSuccess value
-        | Error (DataNotFound msg) -> RequestErrors.NOT_FOUND msg
-        | Error (InvalidRequest msgs) -> RequestErrors.BAD_REQUEST(msgs |> ValidationErrors.toMap)
-        | Error (GenericError msg) -> ServerErrors.INTERNAL_ERROR msg
+        | Error(DataNotFound msg) -> RequestErrors.NOT_FOUND msg
+        | Error(InvalidRequest msgs) -> RequestErrors.BAD_REQUEST(msgs |> ValidationErrors.toMap)
+        | Error(GenericError msg) -> ServerErrors.INTERNAL_ERROR msg
 
 module Result =
     let ofParseResult field originalValue v : _ ValidationResult =
