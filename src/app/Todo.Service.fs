@@ -59,7 +59,7 @@ let createTodo (connectionString: string) (request: CreateTodoRequest) : Task<Se
                 todo.CompletedDate
             )
             .ExecuteAsync()
-        :> Task
+        |> Task.map ignore
 }
 
 let getTodoById (connectionString: string) (todoId: string) : Task<ServiceResult<_>> = taskResult {
@@ -116,7 +116,8 @@ let editTodo (connectionString: string) request : Task<ServiceResult> = taskResu
 }
 
 let clearAllTodos (connectionString: string) =
-    DbCommands.ClearAllTodos.WithConnection(connectionString).ExecuteAsync() :> Task
+    DbCommands.ClearAllTodos.WithConnection(connectionString).ExecuteAsync()
+    |> Task.map ignore
 
 let getTodoStats (connectionString: string) = task {
     let! stats = DbQueries.GetTodoStats.WithConnection(connectionString).ExecuteAsync()

@@ -5,8 +5,6 @@ open Giraffe
 open Microsoft.AspNetCore.Http
 open Validus
 
-type ValidationError = string * string
-
 /// Represents an error occurred while executing a service call.
 type ServiceError =
     | DataNotFound of string
@@ -16,7 +14,9 @@ type ServiceError =
     static member createInvalidRequest field error =
         error |> List.singleton |> ValidationErrors.create field |> InvalidRequest
 
+/// Represents a Result of some successfully value, or a Service Error.
 type ServiceResult<'T> = Result<'T, ServiceError>
+/// Represents a Result of some success with no value, or a Service Error.
 type ServiceResult = ServiceResult<unit>
 
 type Result =

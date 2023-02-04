@@ -7,6 +7,7 @@ open Saturn
 
 type HttpContext with
 
+    /// The SQL connection string to the Todo database.
     member this.TodoDbConnectionString =
         match this.GetService<IConfiguration>().GetConnectionString "TodoDb" with
         | null -> failwith "Missing connection string"
@@ -56,24 +57,30 @@ let getTodoStats next (ctx: HttpContext) = task {
 
 /// Giraffe version of router
 let giraffeRouter: HttpHandler =
-    choose [
-        GET >=> route "/todo/" >=> getAllTodos
-        GET >=> route "/todo/stats" >=> getTodoStats
+    subRoute
+        "/todo"
+        (choose [
+            GET >=> route "/" >=> getAllTodos
+            GET >=> route "/stats" >=> getTodoStats
 
-        POST >=> route "/todo/" >=> createTodo
+            POST >=> route "/" >=> createTodo
 
-        GET >=> routef "/todo/%s" getTodo
-        PUT >=> routef "/todo/%s" editTodo
-        PUT >=> routef "/todo/%s/complete" completeTodo
-    ]
+            GET >=> routef "/%s" getTodo
+            PUT >=> routef "/%s" editTodo
+            PUT >=> routef "/%s/complete" completeTodo
+        ])
 
 /// Saturn's version of router
-let saturnRouter = router {
-    get "/todo/" getAllTodos
-    getf "/todo/%s" getTodo
-    putf "/todo/%s" editTodo
-    post "/todo/" createTodo
+let saturnRouter: HttpHandler =
+    subRoute
+        "/todo"
+        (router {
+            get "/" getAllTodos
+            get "/stats" getTodoStats
 
-    get "/todo/stats" getTodoStats
-    putf "/todo/%s/complete" completeTodo
-}
+            post "/" createTodo
+
+            getf "/%s" getTodo
+            putf "/%s" editTodo
+            putf "/%s/complete" completeTodo
+        })
