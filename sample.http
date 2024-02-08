@@ -10,6 +10,14 @@ Content-Type: application/json
   "Description": "Learn all about the language"
 }
 
+### Create a todo - validation errors
+POST http://localhost:5000/todo/
+
+{
+    "description": "This is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second test"
+}
+
+
 ### Examples of error handling
 GET http://localhost:5000/todo/INVALID-GUID
 GET http://localhost:5000/todo/00000000-0000-0000-0000-000000000000
