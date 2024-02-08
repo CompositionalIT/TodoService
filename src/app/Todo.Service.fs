@@ -19,7 +19,7 @@ module Dapper =
         let parameters = {|
             Id = todo.Id.Value
             Title = todo.Title.Value
-            Description = todo.Description |> Option.map (fun r -> r.Value) |> Option.toObj
+            Description = todo.Description |> Option.map _.Value |> Option.toObj
             CreatedDate = todo.CreatedDate
             CompletedDate = todo.CompletedDate |> Option.toNullable
         |}
