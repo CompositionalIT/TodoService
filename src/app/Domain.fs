@@ -9,7 +9,7 @@ type String255 =
     private
     | String255 of string
 
-    static member TryCreate field value =
+    static member TryCreate field value : ValidationResult<String255> =
         (Check.String.notEmpty >=> Check.String.lessThanLen 255) field value
         |> Result.map String255
 
@@ -25,12 +25,12 @@ type TodoId =
         match this with
         | TodoId v -> v
 
-    static member Create() = TodoId(Guid.NewGuid())
+    static member Create() = Guid.NewGuid() |> TodoId
 
-    static member TryCreate(field, todoId) : _ ValidationResult =
+    static member TryCreate(field, todoId) : ValidationResult<TodoId> =
         Check.Guid.notEmpty field todoId |> Result.map TodoId
 
-    static member TryCreate(field, guid: string) =
+    static member TryCreate(field, guid: string) : ValidationResult<TodoId> =
         guid
         |> Guid.TryParse
         |> Result.ofParseResult field guid
@@ -44,10 +44,10 @@ type Todo = {
     CompletedDate: DateTime option
 } with
 
-    static member TryCreate(title, description, todoId) = validate {
+    static member TryCreate(title, description, todoId) : ValidationResult<Todo> = validate {
         let! title = title |> String255.TryCreate "Title"
 
-        let! todoId =
+        and! todoId =
             match todoId with
             | Some(todoId: Guid) -> TodoId.TryCreate("TodoId", todoId)
             | None -> TodoId.Create() |> Ok

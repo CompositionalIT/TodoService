@@ -34,7 +34,6 @@ let completeTodo (todoId: string) next (ctx: HttpContext) = task {
     return! Result.toHttpHandler result next ctx
 }
 
-// Create a function to edit the todo's title and description
 let editTodo todoId next (ctx: HttpContext) = task {
     let! request = ctx.BindJsonAsync<Service.RawTodo>()
 
@@ -63,7 +62,7 @@ let getTodoStats next (ctx: HttpContext) = task {
     return! json stats next ctx
 }
 
-/// Giraffe version of router
+/// Giraffe's version of router
 let giraffeRouter: HttpHandler =
     subRoute
         "/todo"
