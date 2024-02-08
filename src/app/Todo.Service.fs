@@ -2,7 +2,6 @@ module Todo.Service
 
 open Dapper
 open Db.Scripts
-open Db.TableDtos
 open Domain
 open FsToolkit.ErrorHandling
 open Microsoft.Data.SqlClient
@@ -55,7 +54,7 @@ let createTodo (connectionString: string) (request: CreateTodoRequest) : Task<Se
             .WithParameters(
                 todo.Id.Value,
                 todo.Title.Value,
-                todo.Description |> Option.map (fun r -> r.Value),
+                todo.Description |> Option.map _.Value,
                 todo.CreatedDate,
                 todo.CompletedDate
             )

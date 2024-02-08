@@ -2,7 +2,6 @@
 module Shared
 
 open Giraffe
-open Microsoft.AspNetCore.Http
 open Validus
 
 /// Represents an error that occurred while executing a service call.
@@ -27,9 +26,9 @@ type Result =
         | Ok value ->
             let onSuccess = defaultArg onSuccess (fun _ next ctx -> next ctx)
             onSuccess value
-        | Error(DataNotFound msg) -> RequestErrors.NOT_FOUND msg
-        | Error(InvalidRequest msgs) -> RequestErrors.badRequest (msgs |> ValidationErrors.toMap |> json)
-        | Error(GenericError msg) -> ServerErrors.INTERNAL_ERROR msg
+        | Error(DataNotFound message) -> RequestErrors.NOT_FOUND message
+        | Error(InvalidRequest messages) -> RequestErrors.badRequest (messages |> ValidationErrors.toMap |> json)
+        | Error(GenericError message) -> ServerErrors.INTERNAL_ERROR message
 
 module Result =
     let ofParseResult field originalValue v : _ ValidationResult =
