@@ -28,7 +28,7 @@ type Result =
             let onSuccess = defaultArg onSuccess (fun _ next ctx -> next ctx)
             onSuccess value
         | Error(DataNotFound msg) -> RequestErrors.NOT_FOUND msg
-        | Error(InvalidRequest msgs) -> RequestErrors.BAD_REQUEST(msgs |> ValidationErrors.toMap)
+        | Error(InvalidRequest msgs) -> RequestErrors.badRequest (msgs |> ValidationErrors.toMap |> json)
         | Error(GenericError msg) -> ServerErrors.INTERNAL_ERROR msg
 
 module Result =

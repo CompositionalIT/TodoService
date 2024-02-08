@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
     </PropertyGroup>
 
     <ItemGroup>
@@ -13,8 +13,8 @@
         <Compile Include="Todo.Api.fs" />
         <Compile Include="Program.fs" />
         <Content Include="sample.http" />
-        <Content Include="Properties\launchSettings.json" CopyToOutputDirectory="Always"/>
-        <Content Include="appSettings.json" CopyToOutputDirectory="Always"/>
+        <Content Include="Properties\launchSettings.json" CopyToOutputDirectory="Always" />
+        <Content Include="appSettings.json" CopyToOutputDirectory="Always" />
     </ItemGroup>
 
     <ItemGroup>
@@ -26,14 +26,14 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
             <PrivateAssets>all</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="Dapper" Version="2.0.123" />
-        <PackageReference Include="Facil" Version="2.3.2" />
-        <PackageReference Include="FSharp.SystemTextJson" Version="0.18.24" />
-        <PackageReference Include="FsToolkit.ErrorHandling" Version="2.13.0" />
-        <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="2.13.0" />
-        <PackageReference Include="Microsoft.Data.SqlClient" Version="4.1.0" />
+        <PackageReference Include="Dapper" Version="2.1.28" />
+        <PackageReference Include="Facil" Version="2.7.4" />
+        <PackageReference Include="FSharp.SystemTextJson" Version="1.2.42" />
+        <PackageReference Include="FsToolkit.ErrorHandling" Version="4.15.1" />
+        <PackageReference Include="FsToolkit.ErrorHandling.TaskResult" Version="4.15.1" />
+        <PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.4" />
         <PackageReference Include="Saturn" Version="0.16.1" />
-        <PackageReference Include="Validus" Version="4.0.1" />
+        <PackageReference Include="Validus" Version="4.1.3" />
     </ItemGroup>
 
 </Project>

@@ -36,14 +36,13 @@ type TodoId =
         |> Result.ofParseResult field guid
         |> Result.bind (fun todoId -> TodoId.TryCreate(field, todoId))
 
-type Todo =
-    {
-        Id: TodoId
-        Title: String255
-        Description: String255 option
-        CreatedDate: DateTime
-        CompletedDate: DateTime option
-    }
+type Todo = {
+    Id: TodoId
+    Title: String255
+    Description: String255 option
+    CreatedDate: DateTime
+    CompletedDate: DateTime option
+} with
 
     static member TryCreate(title, description, todoId) = validate {
         let! title = title |> String255.TryCreate "Title"

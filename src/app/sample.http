@@ -10,11 +10,16 @@ Content-Type: application/json
   "Description": "Learn all about the language"
 }
 
+### Examples of error handling
+GET http://localhost:5000/todo/INVALID-GUID
+GET http://localhost:5000/todo/00000000-0000-0000-0000-000000000000
+GET http://localhost:5000/todo/e3608184-c840-486b-92f8-552944fbde0d
+
 ### Get a specific todo
-GET http://localhost:5000/todo/3e805c96-dc55-4165-99b1-d216b265f34c
+GET http://localhost:5000/todo/02b64e52-7542-49e6-b8d8-1f893b0245de
 
 ### Edit a todo
-PUT http://localhost:5000/todo/3e805c96-dc55-4165-99b1-d216b265f34c
+PUT http://localhost:5000/todo/02b64e52-7542-49e6-b8d8-1f893b0245de
 Content-Type: application/json
 
 {
@@ -23,7 +28,13 @@ Content-Type: application/json
 }
 
 ### Complete a todo
-PUT http://localhost:5000/todo/3e805c96-dc55-4165-99b1-d216b265f34c/complete
+PUT http://localhost:5000/todo/02b64e52-7542-49e6-b8d8-1f893b0245de/complete
+
+### Delete a todo
+DELETE http://localhost:5000/todo/02b64e52-7542-49e6-b8d8-1f893b0245de
 
 ### Get stats
 GET http://localhost:5000/todo/stats
+
+### Clear all todos
+DELETE http://localhost:5000/todo/clear

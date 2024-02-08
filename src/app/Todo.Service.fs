@@ -2,6 +2,7 @@ module Todo.Service
 
 open Dapper
 open Db.Scripts
+open Db.TableDtos
 open Domain
 open FsToolkit.ErrorHandling
 open Microsoft.Data.SqlClient
@@ -43,12 +44,12 @@ type EditTodoRequest = {
     Description: string
 }
 
-let createTodo (connectionString: string) (request: CreateTodoRequest) : Task<ServiceResult> = taskResult {
+let createTodo (connectionString: string) (request: CreateTodoRequest) : Task<ServiceResult<TodoId>> = taskResult {
     let! (todo: Todo) =
         Todo.TryCreate(request.Title, request.Description, Option.ofNullable request.TodoId)
         |> Result.mapError InvalidRequest
 
-    do!
+    return!
         Todo_Insert
             .WithConnection(connectionString)
             .WithParameters(
@@ -59,13 +60,14 @@ let createTodo (connectionString: string) (request: CreateTodoRequest) : Task<Se
                 todo.CompletedDate
             )
             .ExecuteAsync()
-        |> Task.map ignore
+        |> Task.map (fun _ -> todo.Id)
 }
 
 let getTodoById (connectionString: string) (todoId: string) : Task<ServiceResult<_>> = taskResult {
     let! todoId = TodoId.TryCreate("todoId", todoId) |> Result.mapError InvalidRequest
 
     let! result =
+        // Using Facil's built-in CRUD script to get a Todo by ID.
         Todo_ById
             .WithConnection(connectionString)
             .WithParameters(todoId.Value)
@@ -89,6 +91,21 @@ let completeTodo (connectionString: string) (todoId: string) : Task<ServiceResul
 
     return! rowsModified |> Result.ofRowsModified $"Unknown Todo {todoId.Value}"
 }
+
+let deleteTodo (connectionString: string) (todoId: string) : Task<ServiceResult> = taskResult {
+    // Using a dedicated domain type and associated build member for validation.
+    let! todoId = TodoId.TryCreate("todoId", todoId) |> Result.mapError InvalidRequest
+
+    let! rowsModified =
+        // Using Facil's built-in CRUD script to delete a Todo.
+        Todo_Delete
+            .WithConnection(connectionString)
+            .WithParameters(todoId.Value)
+            .ExecuteAsync()
+
+    return! rowsModified |> Result.ofRowsModified $"Unknown Todo {todoId.Value}"
+}
+
 
 let editTodo (connectionString: string) request : Task<ServiceResult> = taskResult {
     // An example of doing "inline" validation.
