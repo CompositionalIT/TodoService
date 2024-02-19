@@ -1,4 +1,4 @@
-﻿// Edit or remove this or the below line to regenerate on next build
+// Edit or remove this or the below line to regenerate on next build
 // Hash: 2a98c6665499062f1ede72fc3e85df867d2877a910c2a3309425694303cc672d
 
 //////////////////////////////////////////
@@ -52,7 +52,7 @@ module Scripts =
 
 
   [<EditorBrowsable(EditorBrowsableState.Never)>]
-  type ``Todo_ById_Executable`` (connStr: string, conn: SqlConnection, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction) =
+  type ``Todo_ById_Executable`` (connStr: string, conn: SqlConnection | null, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction | null) =
 
     let configureCmd sqlParams (cmd: SqlCommand) =
       cmd.CommandText <- """-- Todo_ById
@@ -147,7 +147,7 @@ WHERE
       executeQuerySingle connStr conn tran configureConn (configureCmd sqlParams) initOrdinals getItem tempTableData
 
 
-  type ``Todo_ById`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+  type ``Todo_ById`` private (connStr: string, conn: SqlConnection | null, tran: SqlTransaction | null) =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     new() =
@@ -203,7 +203,7 @@ WHERE
 
 
   [<EditorBrowsable(EditorBrowsableState.Never)>]
-  type ``Todo_Delete_Executable`` (connStr: string, conn: SqlConnection, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction) =
+  type ``Todo_Delete_Executable`` (connStr: string, conn: SqlConnection | null, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction | null) =
 
     let configureCmd sqlParams (cmd: SqlCommand) =
       cmd.CommandText <- """-- Todo_Delete
@@ -228,7 +228,7 @@ WHERE
       executeNonQuery connStr conn tran configureConn (configureCmd sqlParams) tempTableData
 
 
-  type ``Todo_Delete`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+  type ``Todo_Delete`` private (connStr: string, conn: SqlConnection | null, tran: SqlTransaction | null) =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     new() =
@@ -284,7 +284,7 @@ WHERE
 
 
   [<EditorBrowsable(EditorBrowsableState.Never)>]
-  type ``Todo_Insert_Executable`` (connStr: string, conn: SqlConnection, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction) =
+  type ``Todo_Insert_Executable`` (connStr: string, conn: SqlConnection | null, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction | null) =
 
     let configureCmd sqlParams (cmd: SqlCommand) =
       cmd.CommandText <- """-- Todo_Insert
@@ -322,7 +322,7 @@ VALUES
       executeNonQuery connStr conn tran configureConn (configureCmd sqlParams) tempTableData
 
 
-  type ``Todo_Insert`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+  type ``Todo_Insert`` private (connStr: string, conn: SqlConnection | null, tran: SqlTransaction | null) =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     new() =
@@ -390,7 +390,7 @@ VALUES
 
 
   [<EditorBrowsable(EditorBrowsableState.Never)>]
-  type ``Todo_Merge_Executable`` (connStr: string, conn: SqlConnection, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction) =
+  type ``Todo_Merge_Executable`` (connStr: string, conn: SqlConnection | null, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction | null) =
 
     let configureCmd sqlParams (cmd: SqlCommand) =
       cmd.CommandText <- """-- Todo_Merge
@@ -452,7 +452,7 @@ WHEN NOT MATCHED THEN
       executeNonQuery connStr conn tran configureConn (configureCmd sqlParams) tempTableData
 
 
-  type ``Todo_Merge`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+  type ``Todo_Merge`` private (connStr: string, conn: SqlConnection | null, tran: SqlTransaction | null) =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     new() =
@@ -520,7 +520,7 @@ WHEN NOT MATCHED THEN
 
 
   [<EditorBrowsable(EditorBrowsableState.Never)>]
-  type ``Todo_Update_Executable`` (connStr: string, conn: SqlConnection, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction) =
+  type ``Todo_Update_Executable`` (connStr: string, conn: SqlConnection | null, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction | null) =
 
     let configureCmd sqlParams (cmd: SqlCommand) =
       cmd.CommandText <- """-- Todo_Update
@@ -551,7 +551,7 @@ WHERE
       executeNonQuery connStr conn tran configureConn (configureCmd sqlParams) tempTableData
 
 
-  type ``Todo_Update`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+  type ``Todo_Update`` private (connStr: string, conn: SqlConnection | null, tran: SqlTransaction | null) =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
     new() =
@@ -621,7 +621,7 @@ WHERE
   module ``DbCommands`` =
 
 
-      type ``ClearAllTodos`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+      type ``ClearAllTodos`` private (connStr: string, conn: SqlConnection | null, tran: SqlTransaction | null) =
 
         let configureCmd userConfigureCmd (cmd: SqlCommand) =
           cmd.CommandText <- """-- DbCommands/ClearAllTodos.sql
@@ -668,7 +668,7 @@ DELETE FROM dbo.Todo"""
 
 
       [<EditorBrowsable(EditorBrowsableState.Never)>]
-      type ``CompleteTodo_Executable`` (connStr: string, conn: SqlConnection, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction) =
+      type ``CompleteTodo_Executable`` (connStr: string, conn: SqlConnection | null, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction | null) =
 
         let configureCmd sqlParams (cmd: SqlCommand) =
           cmd.CommandText <- """-- DbCommands/CompleteTodo.sql
@@ -693,7 +693,7 @@ WHERE Id = @Id"""
           executeNonQuery connStr conn tran configureConn (configureCmd sqlParams) tempTableData
 
 
-      type ``CompleteTodo`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+      type ``CompleteTodo`` private (connStr: string, conn: SqlConnection | null, tran: SqlTransaction | null) =
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         new() =
@@ -752,7 +752,7 @@ WHERE Id = @Id"""
 
 
       [<EditorBrowsable(EditorBrowsableState.Never)>]
-      type ``EditTodo_Executable`` (connStr: string, conn: SqlConnection, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction) =
+      type ``EditTodo_Executable`` (connStr: string, conn: SqlConnection | null, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction | null) =
 
         let configureCmd sqlParams (cmd: SqlCommand) =
           cmd.CommandText <- """-- DbCommands/EditTodo.sql
@@ -778,7 +778,7 @@ WHERE Id = @Id"""
           executeNonQuery connStr conn tran configureConn (configureCmd sqlParams) tempTableData
 
 
-      type ``EditTodo`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+      type ``EditTodo`` private (connStr: string, conn: SqlConnection | null, tran: SqlTransaction | null) =
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         new() =
@@ -842,7 +842,7 @@ WHERE Id = @Id"""
   module ``DbQueries`` =
 
 
-      type ``GetAllItems`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+      type ``GetAllItems`` private (connStr: string, conn: SqlConnection | null, tran: SqlTransaction | null) =
 
         let configureCmd userConfigureCmd (cmd: SqlCommand) =
           cmd.CommandText <- """-- DbQueries/GetAllItems.sql
@@ -945,7 +945,7 @@ SELECT * FROM dbo.Todo"""
           executeQuerySingle connStr conn tran this.configureConn (configureCmd this.userConfigureCmd) initOrdinals getItem []
 
 
-      type ``GetTodoStats`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+      type ``GetTodoStats`` private (connStr: string, conn: SqlConnection | null, tran: SqlTransaction | null) =
 
         let configureCmd userConfigureCmd (cmd: SqlCommand) =
           cmd.CommandText <- """-- DbQueries/GetTodoStats.sql

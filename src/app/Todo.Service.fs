@@ -31,21 +31,21 @@ module Dapper =
 
 type CreateTodoRequest = {
     TodoId: Guid Nullable
-    Title: string
-    Description: string
+    Title: string | null
+    Description: string | null
 }
 
-type RawTodo = { Title: string; Description: string }
+type RawTodo = { Title: string | null; Description: string | null }
 
 type EditTodoRequest = {
-    Id: string
-    Title: string
-    Description: string
+    Id: string | null
+    Title: string | null
+    Description: string | null
 }
 
 let createTodo (connectionString: string) (request: CreateTodoRequest) : Task<ServiceResult<TodoId>> = taskResult {
     let! (todo: Todo) =
-        Todo.TryCreate(request.Title, request.Description, Option.ofNullable request.TodoId)
+        Todo.TryCreate(null, request.Description, Option.ofNullable request.TodoId)
         |> Result.mapError InvalidRequest
 
     return!
@@ -108,24 +108,20 @@ let deleteTodo (connectionString: string) (todoId: string) : Task<ServiceResult>
 
 let editTodo (connectionString: string) request : Task<ServiceResult> = taskResult {
     // An example of doing "inline" validation.
-    let! todoDto =
+    let! (todoId, title, description)=
         validate {
             let! title = (Check.String.notEmpty >=> String255.TryCreate) "Title" request.Title
             and! description = String255.TryCreate "Description" request.Description
             and! todoId = TodoId.TryCreate("Id", request.Id)
 
-            return {|
-                Id = todoId.Value
-                Title = title.Value
-                Description = description.Value
-            |}
+            return todoId, title, description
         }
         |> Result.mapError InvalidRequest
 
     let! rowsModified =
         DbCommands.EditTodo
             .WithConnection(connectionString)
-            .WithParameters(todoDto)
+            .WithParameters(title.Value, description.Value, todoId.Value)
             .ExecuteAsync()
 
     return! rowsModified |> Result.ofRowsModified $"Unknown Todo {request.Id}"

@@ -9,7 +9,7 @@ type String255 =
     private
     | String255 of string
 
-    static member TryCreate field value : ValidationResult<String255> =
+    static member TryCreate field (value: string) : ValidationResult<String255> =
         (Check.String.notEmpty >=> Check.String.lessThanLen 255) field value
         |> Result.map String255
 
@@ -44,8 +44,8 @@ type Todo = {
     CompletedDate: DateTime option
 } with
 
-    static member TryCreate(title, description, todoId) : ValidationResult<Todo> = validate {
-        let! title = title |> String255.TryCreate "Title"
+    static member TryCreate(title: string, description: string | null, todoId) : ValidationResult<Todo> = validate {
+        let! title = String255.TryCreate "Title" title
 
         and! todoId =
             match todoId with

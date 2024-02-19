@@ -1,10 +1,25 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net8.0</TargetFramework>
+
+        <LangVersion>preview</LangVersion>
+        <OtherFlags>--checknulls+</OtherFlags>
+        <FSharp_Shim_Present>false</FSharp_Shim_Present>
+        <FscToolPath>C:\Users\IsaacAbraham\code\fsharp\artifacts\bin\fsc\Release\net8.0</FscToolPath>
+        <FscToolExe>fsc.exe</FscToolExe>
+        <DotnetFscCompilerPath></DotnetFscCompilerPath>
+        <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+        <WarningsAsErrors>true</WarningsAsErrors>
     </PropertyGroup>
 
+    <ItemGroup>
+        <Reference Include="FSharp.Core">
+            <HintPath>C:\Users\IsaacAbraham\code\fsharp\artifacts\bin\FSharp.Core\Release\netstandard2.1\FSharp.Core.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+    
     <ItemGroup>
         <Compile Include="Db.fs" />
         <Compile Include="Shared.fs" />
