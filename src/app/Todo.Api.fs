@@ -15,30 +15,32 @@ type HttpContext with
 
 let createTodo next (ctx: HttpContext) = task {
     let! request = ctx.BindJsonAsync<Service.CreateTodoRequest>()
-    let! result = Service.createTodo ctx.TodoDbConnectionString request
+    let! result = Service.Commands.createTodo ctx.TodoDbConnectionString request
     return! Result.toHttpHandler (result, _.Value >> json) next ctx
 }
 
+type RawTodo = { Title: string; Description: string }
+
 let getTodo (todoId: string) next (ctx: HttpContext) = task {
-    let! result = Service.getTodoById ctx.TodoDbConnectionString todoId
+    let! result = Service.Queries.getTodoById ctx.TodoDbConnectionString todoId
     return! Result.toHttpHandler (result, json) next ctx
 }
 
 let getAllTodos next (ctx: HttpContext) = task {
-    let! results = Service.getAllTodos ctx.TodoDbConnectionString
+    let! results = Service.Queries.getAllTodos ctx.TodoDbConnectionString
     return! json results next ctx
 }
 
 let completeTodo (todoId: string) next (ctx: HttpContext) = task {
-    let! result = Service.completeTodo ctx.TodoDbConnectionString todoId
+    let! result = Service.Commands.completeTodo ctx.TodoDbConnectionString todoId
     return! Result.toHttpHandler result next ctx
 }
 
 let editTodo todoId next (ctx: HttpContext) = task {
-    let! request = ctx.BindJsonAsync<Service.RawTodo>()
+    let! request = ctx.BindJsonAsync<RawTodo>()
 
     let! result =
-        Service.editTodo ctx.TodoDbConnectionString {
+        Service.Commands.editTodo ctx.TodoDbConnectionString {
             Title = request.Title
             Description = request.Description
             Id = todoId
@@ -48,17 +50,17 @@ let editTodo todoId next (ctx: HttpContext) = task {
 }
 
 let deleteTodo todoId next (ctx: HttpContext) = task {
-    let! result = Service.deleteTodo ctx.TodoDbConnectionString todoId
+    let! result = Service.Commands.deleteTodo ctx.TodoDbConnectionString todoId
     return! Result.toHttpHandler result next ctx
 }
 
 let clearAllTodos next (ctx: HttpContext) = task {
-    do! Service.clearAllTodos ctx.TodoDbConnectionString
+    do! Service.Commands.clearAllTodos ctx.TodoDbConnectionString
     return! Successful.OK "All todos deleted" next ctx
 }
 
 let getTodoStats next (ctx: HttpContext) = task {
-    let! stats = Service.getTodoStats ctx.TodoDbConnectionString
+    let! stats = Service.Queries.getTodoStats ctx.TodoDbConnectionString
     return! json stats next ctx
 }
 

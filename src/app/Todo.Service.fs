@@ -1,33 +1,11 @@
 module Todo.Service
 
-open Dapper
 open Db.Scripts
 open Domain
 open FsToolkit.ErrorHandling
-open Microsoft.Data.SqlClient
 open System
 open System.Threading.Tasks
 open Validus
-open Validus.Operators
-
-/// A sample implementation of a single DAL method using Dapper.
-module Dapper =
-    let saveUsingDapper connectionString todo =
-        let conn = new SqlConnection(connectionString)
-
-        let parameters = {|
-            Id = todo.Id.Value
-            Title = todo.Title.Value
-            Description = todo.Description |> Option.map _.Value |> Option.toObj
-            CreatedDate = todo.CreatedDate
-            CompletedDate = todo.CompletedDate |> Option.toNullable
-        |}
-
-        conn.ExecuteAsync(
-            "INSERT INTO dbo.Todo (Id, Title, Description, CreatedDate, CompletedDate)
-        VALUES (@Id, @Title, @Description, @CreatedDate, @CompletedDate)",
-            parameters
-        )
 
 type CreateTodoRequest = {
     TodoId: Guid Nullable
@@ -35,116 +13,116 @@ type CreateTodoRequest = {
     Description: string
 }
 
-type RawTodo = { Title: string; Description: string }
-
 type EditTodoRequest = {
     Id: string
     Title: string
     Description: string
 }
 
-let createTodo (connectionString: string) (request: CreateTodoRequest) : Task<ServiceResult<TodoId>> = taskResult {
-    let! (todo: Todo) =
-        Todo.TryCreate(request.Title, request.Description, Option.ofNullable request.TodoId)
-        |> Result.mapError InvalidRequest
+module Queries =
+    let getAllTodos (connectionString: string) =
+        DbQueries.GetAllItems.WithConnection(connectionString).ExecuteAsync()
 
-    return!
-        Todo_Insert
-            .WithConnection(connectionString)
-            .WithParameters(
-                todo.Id.Value,
-                todo.Title.Value,
-                todo.Description |> Option.map _.Value,
-                todo.CreatedDate,
-                todo.CompletedDate
-            )
-            .ExecuteAsync()
-        |> Task.map (fun _ -> todo.Id)
-}
+    let getTodoStats (connectionString: string) = task {
+        let! stats = DbQueries.GetTodoStats.WithConnection(connectionString).ExecuteAsync()
 
-let getTodoById (connectionString: string) (todoId: string) : Task<ServiceResult<_>> = taskResult {
-    let! todoId = TodoId.TryCreate("todoId", todoId) |> Result.mapError InvalidRequest
+        let getStat status =
+            stats
+            |> Seq.tryPick (fun row -> if row.CompletionState = status then row.TodoItems else None)
+            |> Option.defaultValue 0
 
-    let! result =
+        return {|
+            Completed = getStat "Complete"
+            Incomplete = getStat "Incomplete"
+        |}
+    }
+
+    let getTodoById (connectionString: string) (todoId: string) : _ ServiceResultAsync = taskResult {
+        let! todoId = todoId |> TodoId.TryCreate |> Result.mapError InvalidRequest
+
         // Using Facil's built-in CRUD script to get a Todo by ID.
-        Todo_ById
-            .WithConnection(connectionString)
-            .WithParameters(todoId.Value)
-            .AsyncExecuteSingle()
+        let! todo =
+            Todo_ById
+                .WithConnection(connectionString)
+                .WithParameters(todoId.Value)
+                .AsyncExecuteSingle()
 
-    return! result |> Option.toResult (DataNotFound $"Unknown Todo {todoId.Value}")
-}
+        return! todo |> Result.requireSome (DataNotFound $"Unknown Todo {todoId.Value}")
+    }
 
-let getAllTodos (connectionString: string) =
-    DbQueries.GetAllItems.WithConnection(connectionString).ExecuteAsync()
+    let loadTodo connectionString todoId : ServiceResultAsync<Todo> = taskResult {
+        let! result = getTodoById connectionString todoId
 
-let completeTodo (connectionString: string) (todoId: string) : Task<ServiceResult> = taskResult {
-    // Using a dedicated domain type and associated build member for validation.
-    let! todoId = TodoId.TryCreate("todoId", todoId) |> Result.mapError InvalidRequest
+        return!
+            validate {
+                let! todoId = TodoId.TryCreate(result.Id, "Id")
+                let! title = result.Title |> String255.TryCreate "Title"
+                let! description = result.Description |> Option.toResultOption (String255.TryCreate "Description")
 
-    let! rowsModified =
-        DbCommands.CompleteTodo
-            .WithConnection(connectionString)
-            .WithParameters(DateTime.UtcNow, todoId.Value)
-            .ExecuteAsync()
+                return {
+                    Id = todoId
+                    Title = title
+                    Description = description
+                    CreatedDate = result.CreatedDate
+                    CompletedDate = result.CompletedDate
+                }
+            }
+            |> Result.mapError InvalidRequest
+    }
 
-    return! rowsModified |> Result.ofRowsModified $"Unknown Todo {todoId.Value}"
-}
+module Commands =
+    let createTodo connectionString (request: CreateTodoRequest) : Task<ServiceResult<_>> = taskResult {
+        let! title, todoId, description =
+            validate {
+                let! title = request.Title |> String255.TryCreate "Title"
+                and! todoId = request.TodoId |> Option.ofNullable |> Option.toResultOption TodoId.TryCreate
 
-let deleteTodo (connectionString: string) (todoId: string) : Task<ServiceResult> = taskResult {
-    // Using a dedicated domain type and associated build member for validation.
-    let! todoId = TodoId.TryCreate("todoId", todoId) |> Result.mapError InvalidRequest
+                and! description =
+                    request.Description
+                    |> Option.ofObj
+                    |> Option.toResultOption (String255.TryCreate "Description")
 
-    let! rowsModified =
-        // Using Facil's built-in CRUD script to delete a Todo.
-        Todo_Delete
-            .WithConnection(connectionString)
-            .WithParameters(todoId.Value)
-            .ExecuteAsync()
+                return title, todoId, description
+            }
+            |> Result.mapError InvalidRequest
 
-    return! rowsModified |> Result.ofRowsModified $"Unknown Todo {todoId.Value}"
-}
+        return! Todo.create title description todoId |> Dal.createTodo connectionString
+    }
 
+    let completeTodo connectionString (todoId: string) : ServiceResultAsync<_> = taskResult {
+        let! todo = Queries.loadTodo connectionString todoId
+        let! cmd = todo |> Todo.complete |> Result.mapError DomainError
 
-let editTodo (connectionString: string) request : Task<ServiceResult> = taskResult {
-    // An example of doing "inline" validation.
-    let! todoDto =
-        validate {
-            let! title = (Check.String.notEmpty >=> String255.TryCreate) "Title" request.Title
-            and! description = String255.TryCreate "Description" request.Description
-            and! todoId = TodoId.TryCreate("Id", request.Id)
+        return! cmd |> Dal.completeTodo connectionString
+    }
 
-            return {|
-                Id = todoId.Value
-                Title = title.Value
-                Description = description.Value
-            |}
-        }
-        |> Result.mapError InvalidRequest
+    let deleteTodo connectionString (todoId: string) : ServiceResultAsync = taskResult {
+        let! todo = Queries.loadTodo connectionString todoId
+        let! cmd = todo |> Todo.delete |> Result.mapError DomainError
 
-    let! rowsModified =
-        DbCommands.EditTodo
-            .WithConnection(connectionString)
-            .WithParameters(todoDto)
-            .ExecuteAsync()
+        return! cmd |> Dal.deleteTodo connectionString
+    }
 
-    return! rowsModified |> Result.ofRowsModified $"Unknown Todo {request.Id}"
-}
+    let editTodo connectionString request : ServiceResultAsync = taskResult {
+        let! title, description =
+            validate {
+                let! title = request.Title |> String255.TryCreate "Title"
 
-let clearAllTodos (connectionString: string) =
-    DbCommands.ClearAllTodos.WithConnection(connectionString).ExecuteAsync()
-    |> Task.map ignore
+                and! description =
+                    request.Description
+                    |> Option.ofObj
+                    |> Option.toResultOption (String255.TryCreate "Description")
 
-let getTodoStats (connectionString: string) = task {
-    let! stats = DbQueries.GetTodoStats.WithConnection(connectionString).ExecuteAsync()
+                return title, description
+            }
+            |> Result.mapError InvalidRequest
 
-    let getStat status =
-        stats
-        |> Seq.tryPick (fun row -> if row.CompletionState = status then row.TodoItems else None)
-        |> Option.defaultValue 0
+        let! todo = Queries.loadTodo connectionString request.Id
+        let! cmd = todo |> Todo.edit title description |> Result.mapError DomainError
 
-    return {|
-        Completed = getStat "Complete"
-        Incomplete = getStat "Incomplete"
-    |}
-}
+        return! cmd |> Dal.updateTodo connectionString
+    }
+
+    let clearAllTodos (connectionString: string) =
+        DbCommands.ClearAllTodos.WithConnection(connectionString).ExecuteAsync()
+        |> Task.map ignore

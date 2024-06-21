@@ -27,14 +27,15 @@ type TodoId =
 
     static member Create() = Guid.NewGuid() |> TodoId
 
-    static member TryCreate(field, todoId) : ValidationResult<TodoId> =
-        Check.Guid.notEmpty field todoId |> Result.map TodoId
+    static member TryCreate(todoId, ?field) : ValidationResult<TodoId> =
+        let field = field |> Option.defaultValue "TodoId"
+        todoId |> Check.Guid.notEmpty field |> Result.map TodoId
 
-    static member TryCreate(field, guid: string) : ValidationResult<TodoId> =
-        guid
-        |> Guid.TryParse
-        |> Result.ofParseResult field guid
-        |> Result.bind (fun todoId -> TodoId.TryCreate(field, todoId))
+    static member TryCreate(guid: string, ?field) : ValidationResult<TodoId> = result {
+        let field = field |> Option.defaultValue "TodoId"
+        let! todoId = guid |> Guid.TryParse |> Result.ofParseResult field guid
+        return! TodoId.TryCreate(todoId, field = field)
+    }
 
 type Todo = {
     Id: TodoId
@@ -42,26 +43,65 @@ type Todo = {
     Description: String255 option
     CreatedDate: DateTime
     CompletedDate: DateTime option
-} with
+}
 
-    static member TryCreate(title, description, todoId) : ValidationResult<Todo> = validate {
-        let! title = title |> String255.TryCreate "Title"
+type Wrapped<'T> =
+    private
+    | Data of 'T
 
-        and! todoId =
-            match todoId with
-            | Some(todoId: Guid) -> TodoId.TryCreate("TodoId", todoId)
-            | None -> TodoId.Create() |> Ok
+    member this.Value =
+        match this with
+        | Data v -> v
 
-        and! description =
-            description
-            |> Option.ofObj
-            |> Option.toResultOption (String255.TryCreate "Description")
+type CompletedTodo =
+    Wrapped<{|
+        CompletedId: TodoId
+        Date: DateTime
+    |}>
 
-        return {
-            Id = todoId
-            Title = title
-            Description = description
-            CreatedDate = DateTime.UtcNow
-            CompletedDate = None
-        }
+type DeletedTodo = Wrapped<{| DeletedId: TodoId |}>
+
+type EditedTodo =
+    Wrapped<{|
+        EditedId: TodoId
+        Title: String255
+        Description: String255 option
+    |}>
+
+[<RequireQualifiedAccess>]
+module Todo =
+    let ifActive mapper todo =
+        if todo.CompletedDate.IsSome then
+            Error "Todo is already completed."
+        else
+            mapper todo |> Ok
+
+    let create title description todoId = {
+        Id = todoId |> Option.defaultWith (fun () -> TodoId.Create())
+        Title = title
+        Description = description
+        CreatedDate = DateTime.UtcNow
+        CompletedDate = None
     }
+
+    /// Completes the todo.
+    let complete todo =
+        todo
+        |> ifActive (fun _ ->
+            let date = DateTime.UtcNow
+            Data {| CompletedId = todo.Id; Date = date |}: CompletedTodo)
+
+    /// Checks if a todo can be deleted.
+    let delete todo =
+        todo |> ifActive (fun _ -> Data {| DeletedId = todo.Id |}: DeletedTodo)
+
+    /// Sets the title AND description of the Todo.
+    let edit title description todo =
+        todo
+        |> ifActive (fun this ->
+            Data {|
+                EditedId = todo.Id
+                Title = title
+                Description = description
+            |}
+            : EditedTodo)
