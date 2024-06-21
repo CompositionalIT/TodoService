@@ -71,7 +71,7 @@ module Queries =
     }
 
 module Commands =
-    let createTodo connectionString (request: CreateTodoRequest) : Task<ServiceResult<_>> = taskResult {
+    let createTodo connectionString (request: CreateTodoRequest) : ServiceResultAsync<_> = taskResult {
         let! title, todoId, description =
             validate {
                 let! title = request.Title |> String255.TryCreate "Title"
@@ -86,21 +86,27 @@ module Commands =
             }
             |> Result.mapError InvalidRequest
 
-        return! Todo.create title description todoId |> Dal.createTodo connectionString
+        let command = Todo.create title description todoId
+
+        return! command |> Dal.createTodo connectionString
     }
 
-    let completeTodo connectionString (todoId: string) : ServiceResultAsync<_> = taskResult {
-        let! todo = Queries.loadTodo connectionString todoId
-        let! cmd = todo |> Todo.complete |> Result.mapError DomainError
+    let completeTodo connectionString todoId : ServiceResultAsync<_> = taskResult {
+        let! command = taskResult {
+            let! todo = Queries.loadTodo connectionString todoId
+            return! todo |> Todo.complete |> Result.mapError DomainError
+        }
 
-        return! cmd |> Dal.completeTodo connectionString
+        return! command |> Dal.completeTodo connectionString
     }
 
-    let deleteTodo connectionString (todoId: string) : ServiceResultAsync = taskResult {
-        let! todo = Queries.loadTodo connectionString todoId
-        let! cmd = todo |> Todo.delete |> Result.mapError DomainError
+    let deleteTodo connectionString todoId : ServiceResultAsync = taskResult {
+        let! command = taskResult {
+            let! todo = Queries.loadTodo connectionString todoId
+            return! todo |> Todo.delete |> Result.mapError DomainError
+        }
 
-        return! cmd |> Dal.deleteTodo connectionString
+        return! command |> Dal.deleteTodo connectionString
     }
 
     let editTodo connectionString request : ServiceResultAsync = taskResult {
@@ -117,10 +123,12 @@ module Commands =
             }
             |> Result.mapError InvalidRequest
 
-        let! todo = Queries.loadTodo connectionString request.Id
-        let! cmd = todo |> Todo.edit title description |> Result.mapError DomainError
+        let! command = taskResult {
+            let! todo = Queries.loadTodo connectionString request.Id
+            return! todo |> Todo.edit title description |> Result.mapError DomainError
+        }
 
-        return! cmd |> Dal.updateTodo connectionString
+        return! command |> Dal.updateTodo connectionString
     }
 
     let clearAllTodos (connectionString: string) =

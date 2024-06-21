@@ -4,60 +4,68 @@ open Db.Scripts
 open Domain
 open FsToolkit.ErrorHandling
 
-let createTodo (connectionString: string) todo =
-    Todo_Insert
-        .WithConnection(connectionString)
-        .WithParameters(
-            todo.Id.Value,
-            todo.Title.Value,
-            todo.Description |> Option.map _.Value,
-            todo.CreatedDate,
-            todo.CompletedDate
-        )
-        .ExecuteAsync()
-    |> Task.map (fun _ -> todo.Id)
+open Sql
+open System.Threading.Tasks
 
-let completeTodo (connectionString: string) (data: CompletedTodo) = taskResult {
+let inline (|Data|) x = (^a: (member Value: _) x)
+
+let createTodo (connectionString: string) (Data cmd: CreateTodoCmd) = task {
+    try
+        do!
+            Todo_Insert
+                .WithConnection(connectionString)
+                .WithParameters(
+                    cmd.CreatedId.Value,
+                    cmd.Title.Value,
+                    cmd.Description |> Option.map _.Value,
+                    cmd.CreatedDate,
+                    None
+                )
+                .ExecuteAsync()
+            :> Task
+
+        return Ok cmd.CreatedId
+    with UniqueConstraint("dbo.Todo", "UC_Todo_Title") ->
+        return Error(DomainError "A Todo with this title already exists.")
+}
+
+let completeTodo (connectionString: string) (Data cmd: CompleteTodoCmd) = taskResult {
     let! rowsModified =
         DbCommands.CompleteTodo
             .WithConnection(connectionString)
-            .WithParameters(data.Value.Date, data.Value.CompletedId.Value)
+            .WithParameters(cmd.Date, cmd.CompletedId.Value)
             .ExecuteAsync()
 
-    return!
-        rowsModified
-        |> Result.ofRowsModified $"Todo {data.Value.CompletedId.Value} not found"
+    return! rowsModified |> ofRowsModified $"Todo {cmd.CompletedId.Value} not found"
 }
 
-let deleteTodo (connectionString: string) (data: DeletedTodo) = taskResult {
+let deleteTodo (connectionString: string) (Data cmd: DeleteTodoCmd) = taskResult {
     // Using Facil's built-in CRUD script to delete a Todo.
     let! rowsModified =
         Todo_Delete
             .WithConnection(connectionString)
-            .WithParameters(data.Value.DeletedId.Value)
+            .WithParameters(cmd.DeletedId.Value)
             .ExecuteAsync()
 
-    return!
-        rowsModified
-        |> Result.ofRowsModified $"Todo {data.Value.DeletedId.Value} not found"
+    return! rowsModified |> ofRowsModified $"Todo {cmd.DeletedId.Value} not found"
 }
 
-let updateTodo (connectionString: string) (data: EditedTodo) = taskResult {
-    let! rowsModified =
-        DbCommands.EditTodo
-            .WithConnection(connectionString)
-            .WithParameters(
-                Id = data.Value.EditedId.Value,
-                Title = data.Value.Title.Value,
-                Description = (data.Value.Description |> Option.map _.Value |> Option.toObj)
-            )
-            .ExecuteAsync()
+let updateTodo (connectionString: string) (Data cmd: EditTodoCmd) = taskResult {
+    try
+        let! rowsModified =
+            DbCommands.EditTodo
+                .WithConnection(connectionString)
+                .WithParameters(
+                    Id = cmd.EditedId.Value,
+                    Title = cmd.Title.Value,
+                    Description = (cmd.Description |> Option.map _.Value |> Option.toObj)
+                )
+                .ExecuteAsync()
 
-    return!
-        rowsModified
-        |> Result.ofRowsModified $"Unknown Todo {data.Value.EditedId.Value}"
+        do! rowsModified |> ofRowsModified $"Unknown Todo {cmd.EditedId.Value}"
+    with UniqueConstraint("dbo.Todo", "UC_Todo_Title") ->
+        return! Error(DomainError "A Todo with this title already exists.")
 }
-
 
 /// A sample implementation of a single DAL method using Dapper.
 module Dapper =

@@ -46,12 +46,6 @@ module Result =
         | true, v -> Ok v
         | false, _ -> Error(ValidationErrors.create field [ $"Unable to parse '{originalValue}'" ])
 
-    let ofRowsModified onNone rowsModified =
-        match rowsModified with
-        | 0 -> Error(DataNotFound onNone)
-        | 1 -> Ok()
-        | _ -> Error(GenericError $"Too many rows modified ({rowsModified})")
-
 module Option =
     /// If value is None, returns Ok None, otherwise runs the validator on Some value and wraps the result in Some.
     /// Use this if you want to handle the case for optional data, when you want to validate data *only if there is some*.

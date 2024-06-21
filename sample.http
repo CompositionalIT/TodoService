@@ -14,7 +14,7 @@ Content-Type: application/json
 POST http://localhost:5000/todo/
 
 {
-    "description": "This is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second test"
+    "Description": "This is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second test"
 }
 
 
@@ -24,19 +24,19 @@ GET http://localhost:5000/todo/00000000-0000-0000-0000-000000000000
 GET http://localhost:5000/todo/e3608184-c840-486b-92f8-552944fbde0d
 
 ### Get a specific todo
-GET http://localhost:5000/todo/02b64e52-7542-49e6-b8d8-1f893b0245de
+GET http://localhost:5000/todo/2b8b06f4-739c-4638-9876-953b1003c799
 
 ### Edit a todo
-PUT http://localhost:5000/todo/02b64e52-7542-49e6-b8d8-1f893b0245de
+PUT http://localhost:5000/todo/2b8b06f4-739c-4638-9876-953b1003c799
 Content-Type: application/json
 
 {
-  "Title": "Learn F# Edited",
-  "Description": "Learn all about the language, but for real!"
+  "title": "Learn F# 2",
+  "description": "Learn all about the language, but for real!"
 }
 
 ### Complete a todo
-PUT http://localhost:5000/todo/02b64e52-7542-49e6-b8d8-1f893b0245de/complete
+PUT http://localhost:5000/todo/2b8b06f4-739c-4638-9876-953b1003c799/complete
 
 ### Delete a todo
 DELETE http://localhost:5000/todo/02b64e52-7542-49e6-b8d8-1f893b0245de
@@ -45,4 +45,4 @@ DELETE http://localhost:5000/todo/02b64e52-7542-49e6-b8d8-1f893b0245de
 GET http://localhost:5000/todo/stats
 
 ### Clear all todos
-DELETE http://localhost:5000/todo/clear
+DELETE http://localhost:5000/todo/

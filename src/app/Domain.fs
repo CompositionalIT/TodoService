@@ -45,7 +45,7 @@ type Todo = {
     CompletedDate: DateTime option
 }
 
-type Wrapped<'T> =
+type Cmd<'T> =
     private
     | Data of 'T
 
@@ -53,16 +53,24 @@ type Wrapped<'T> =
         match this with
         | Data v -> v
 
-type CompletedTodo =
-    Wrapped<{|
+type CreateTodoCmd =
+    Cmd<{|
+        CreatedId: TodoId
+        Title: String255
+        Description: String255 option
+        CreatedDate: DateTime
+    |}>
+
+type CompleteTodoCmd =
+    Cmd<{|
         CompletedId: TodoId
         Date: DateTime
     |}>
 
-type DeletedTodo = Wrapped<{| DeletedId: TodoId |}>
+type DeleteTodoCmd = Cmd<{| DeletedId: TodoId |}>
 
-type EditedTodo =
-    Wrapped<{|
+type EditTodoCmd =
+    Cmd<{|
         EditedId: TodoId
         Title: String255
         Description: String255 option
@@ -70,38 +78,50 @@ type EditedTodo =
 
 [<RequireQualifiedAccess>]
 module Todo =
-    let ifActive mapper todo =
+    let checkActive todo =
         if todo.CompletedDate.IsSome then
             Error "Todo is already completed."
         else
-            mapper todo |> Ok
+            Ok()
 
-    let create title description todoId = {
-        Id = todoId |> Option.defaultWith (fun () -> TodoId.Create())
-        Title = title
-        Description = description
-        CreatedDate = DateTime.UtcNow
-        CompletedDate = None
-    }
+    let create title description todoId =
+        Data {|
+            CreatedId = todoId |> Option.defaultWith (fun () -> TodoId.Create())
+            Title = title
+            Description = description
+            CreatedDate = DateTime.UtcNow
+        |}
+        : CreateTodoCmd
 
     /// Completes the todo.
-    let complete todo =
-        todo
-        |> ifActive (fun _ ->
-            let date = DateTime.UtcNow
-            Data {| CompletedId = todo.Id; Date = date |}: CompletedTodo)
+    let complete todo = result {
+        do! checkActive todo
+
+        return
+            (Data {|
+                CompletedId = todo.Id
+                Date = DateTime.UtcNow
+            |}
+            : CompleteTodoCmd)
+    }
 
     /// Checks if a todo can be deleted.
-    let delete todo =
-        todo |> ifActive (fun _ -> Data {| DeletedId = todo.Id |}: DeletedTodo)
+    let delete todo = result {
+        do! checkActive todo
+        return (Data {| DeletedId = todo.Id |}: DeleteTodoCmd)
+    }
 
     /// Sets the title AND description of the Todo.
-    let edit title description todo =
-        todo
-        |> ifActive (fun this ->
+    let edit title description todo : Result<EditTodoCmd, _> = result {
+        do! checkActive todo
+
+        if title = todo.Title && description = todo.Description then
+            return! Error "No changes were made."
+
+        return
             Data {|
                 EditedId = todo.Id
                 Title = title
                 Description = description
             |}
-            : EditedTodo)
+    }

@@ -19,8 +19,6 @@ let createTodo next (ctx: HttpContext) = task {
     return! Result.toHttpHandler (result, _.Value >> json) next ctx
 }
 
-type RawTodo = { Title: string; Description: string }
-
 let getTodo (todoId: string) next (ctx: HttpContext) = task {
     let! result = Service.Queries.getTodoById ctx.TodoDbConnectionString todoId
     return! Result.toHttpHandler (result, json) next ctx
@@ -37,7 +35,7 @@ let completeTodo (todoId: string) next (ctx: HttpContext) = task {
 }
 
 let editTodo todoId next (ctx: HttpContext) = task {
-    let! request = ctx.BindJsonAsync<RawTodo>()
+    let! request = ctx.BindJsonAsync<{| Title: string; Description: string |}>()
 
     let! result =
         Service.Commands.editTodo ctx.TodoDbConnectionString {
