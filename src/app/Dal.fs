@@ -3,10 +3,10 @@ module Dal
 open Db.Scripts
 open Domain
 open FsToolkit.ErrorHandling
-
 open Sql
 open System.Threading.Tasks
 
+/// Unwraps the Value member of some data.
 let inline (|Data|) x = (^a: (member Value: _) x)
 
 let createTodo (connectionString: string) (Data cmd: CreateTodoCmd) = task {

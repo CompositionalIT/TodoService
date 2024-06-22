@@ -39,9 +39,9 @@ let editTodo todoId next (ctx: HttpContext) = task {
 
     let! result =
         Service.Commands.editTodo ctx.TodoDbConnectionString {
+            Id = todoId
             Title = request.Title
             Description = request.Description
-            Id = todoId
         }
 
     return! Result.toHttpHandler result next ctx

@@ -4,7 +4,6 @@ open Db.Scripts
 open Domain
 open FsToolkit.ErrorHandling
 open System
-open System.Threading.Tasks
 open Validus
 
 type CreateTodoRequest = {
@@ -37,7 +36,7 @@ module Queries =
         |}
     }
 
-    let getTodoById (connectionString: string) (todoId: string) : _ ServiceResultAsync = taskResult {
+    let getTodoById (connectionString: string) (todoId: string) : ServiceResultAsync<_> = taskResult {
         let! todoId = todoId |> TodoId.TryCreate |> Result.mapError InvalidRequest
 
         // Using Facil's built-in CRUD script to get a Todo by ID.
@@ -50,14 +49,15 @@ module Queries =
         return! todo |> Result.requireSome (DataNotFound $"Unknown Todo {todoId.Value}")
     }
 
-    let loadTodo connectionString todoId : ServiceResultAsync<Todo> = taskResult {
-        let! result = getTodoById connectionString todoId
+module Commands =
+    let private loadTodo connectionString todoId : ServiceResultAsync<Todo> = taskResult {
+        let! result = Queries.getTodoById connectionString todoId
 
         return!
             validate {
                 let! todoId = TodoId.TryCreate(result.Id, "Id")
-                let! title = result.Title |> String255.TryCreate "Title"
-                let! description = result.Description |> Option.toResultOption (String255.TryCreate "Description")
+                and! title = result.Title |> String255.TryCreate "Title"
+                and! description = result.Description |> Option.toResultOption (String255.TryCreate "Description")
 
                 return {
                     Id = todoId
@@ -70,7 +70,6 @@ module Queries =
             |> Result.mapError InvalidRequest
     }
 
-module Commands =
     let createTodo connectionString (request: CreateTodoRequest) : ServiceResultAsync<_> = taskResult {
         let! title, todoId, description =
             validate {
@@ -86,26 +85,18 @@ module Commands =
             }
             |> Result.mapError InvalidRequest
 
-        let command = Todo.create title description todoId
-
-        return! command |> Dal.createTodo connectionString
+        return! Todo.create title description todoId |> Dal.createTodo connectionString
     }
 
     let completeTodo connectionString todoId : ServiceResultAsync<_> = taskResult {
-        let! command = taskResult {
-            let! todo = Queries.loadTodo connectionString todoId
-            return! todo |> Todo.complete |> Result.mapError DomainError
-        }
-
+        let! todo = loadTodo connectionString todoId
+        let! command = todo |> Todo.complete |> Result.mapError DomainError
         return! command |> Dal.completeTodo connectionString
     }
 
     let deleteTodo connectionString todoId : ServiceResultAsync = taskResult {
-        let! command = taskResult {
-            let! todo = Queries.loadTodo connectionString todoId
-            return! todo |> Todo.delete |> Result.mapError DomainError
-        }
-
+        let! todo = loadTodo connectionString todoId
+        let! command = todo |> Todo.delete |> Result.mapError DomainError
         return! command |> Dal.deleteTodo connectionString
     }
 
@@ -123,11 +114,8 @@ module Commands =
             }
             |> Result.mapError InvalidRequest
 
-        let! command = taskResult {
-            let! todo = Queries.loadTodo connectionString request.Id
-            return! todo |> Todo.edit title description |> Result.mapError DomainError
-        }
-
+        let! todo = loadTodo connectionString request.Id
+        let! command = todo |> Todo.edit title description |> Result.mapError DomainError
         return! command |> Dal.updateTodo connectionString
     }
 

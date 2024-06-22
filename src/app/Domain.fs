@@ -78,12 +78,13 @@ type EditTodoCmd =
 
 [<RequireQualifiedAccess>]
 module Todo =
-    let checkActive todo =
+    let private checkActive todo =
         if todo.CompletedDate.IsSome then
             Error "Todo is already completed."
         else
             Ok()
 
+    /// Creates a new todo, with an optional todoId.
     let create title description todoId =
         Data {|
             CreatedId = todoId |> Option.defaultWith (fun () -> TodoId.Create())
@@ -112,16 +113,17 @@ module Todo =
     }
 
     /// Sets the title AND description of the Todo.
-    let edit title description todo : Result<EditTodoCmd, _> = result {
+    let edit title description todo = result {
         do! checkActive todo
 
         if title = todo.Title && description = todo.Description then
             return! Error "No changes were made."
 
         return
-            Data {|
+            (Data {|
                 EditedId = todo.Id
                 Title = title
                 Description = description
             |}
+            : EditTodoCmd)
     }
