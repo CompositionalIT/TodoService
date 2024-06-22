@@ -6,8 +6,9 @@ POST http://localhost:5000/todo/
 Content-Type: application/json
 
 {
-  "Title": "Learn F#",
-  "Description": "Learn all about the language"
+    "Id": "2b8b06f4-739c-4638-9876-953b1003c799",
+    "Title": "Learn F# GUID",
+    "Description": "Learn all about the language"
 }
 
 ### Create a todo - validation errors
@@ -16,7 +17,6 @@ POST http://localhost:5000/todo/
 {
     "Description": "This is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second testThis is a second test"
 }
-
 
 ### Examples of error handling
 GET http://localhost:5000/todo/INVALID-GUID

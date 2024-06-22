@@ -7,7 +7,7 @@ open System
 open Validus
 
 type CreateTodoRequest = {
-    TodoId: Guid Nullable
+    Id: Guid Nullable
     Title: string
     Description: string
 }
@@ -74,7 +74,7 @@ module Commands =
         let! title, todoId, description =
             validate {
                 let! title = request.Title |> String255.TryCreate "Title"
-                and! todoId = request.TodoId |> Option.ofNullable |> Option.toResultOption TodoId.TryCreate
+                and! todoId = request.Id |> Option.ofNullable |> Option.toResultOption TodoId.TryCreate
 
                 and! description =
                     request.Description

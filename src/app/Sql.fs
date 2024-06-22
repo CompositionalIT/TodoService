@@ -18,16 +18,20 @@ let ofRowsModified onNone rowsModified =
     | SingleRowAffected -> Ok()
     | MultipleRowsAffected _ -> Error(GenericError $"Too many rows modified ({rowsModified})")
 
-let (|PrimaryAggregationException|_|) (ex: exn) =
-    match ex with
-    | :? AggregateException as ex -> Some(PrimaryAggregationException ex.InnerExceptions[0])
-    | _ -> None
+module Regexes =
+    [<Literal>]
+    let uniqueIndex =
+        @"Cannot insert duplicate key row in object '([^']+)' with unique index '([^']+)'"
 
-let (|SqlException|_|) (ex: exn) =
-    match ex with
-    | :? SqlException as ex -> Some(ex.Data["HelpLink.EvtID"] :?> string |> int, ex.Message)
-    | _ -> None
+    [<Literal>]
+    let constraintViolation =
+        @"Violation of ([A-Z\s]+) constraint '([^']+)'. Cannot insert duplicate key in object '([^']+)'"
 
+    [<Literal>]
+    let nullColumn =
+        @"Cannot insert the value NULL into column '([^']+)', table '([^']+)'[^']*column does not allow nulls."
+
+/// A simple Regex active pattern.
 let (|Regex|_|) pattern input =
     let m = Regex.Match(input, pattern)
 
@@ -36,36 +40,44 @@ let (|Regex|_|) pattern input =
     else
         None
 
-let (|UniqueConstraint|_|) =
-    function
-    | SqlException(2627, Regex @"constraint '([\w\.]+)'.*object '([\w\.]+)" [ _; uniqueConstraint; table ]) ->
-        Some(UniqueConstraint(table, uniqueConstraint))
+let (|PrimaryAggregationException|_|) (ex: exn) =
+    match ex with
+    | :? AggregateException as ex -> Some(PrimaryAggregationException ex.InnerExceptions[0])
     | _ -> None
 
+/// An active pattern which matches a SQLException and extracts both the HelpLink.EvtID and exception Message.
+let (|SqlException|_|) (ex: exn) =
+    match ex with
+    | :? SqlException as ex -> Some(ex.Data["HelpLink.EvtID"] :?> string |> int, ex.Message)
+    | _ -> None
+
+/// A SQLException active pattern which matches a unique index constraint violation (2601) and extracts the object and index.
 let (|UniqueIndexConstraint|_|) =
     function
-    | SqlException(2601, msg) ->
-        let words = msg.Split([| " "; "\r\n" |], StringSplitOptions.RemoveEmptyEntries)
-        let constraintName = words[11][1 .. (words[11].Length - 3)]
-        Some(UniqueIndexConstraint constraintName)
+    | SqlException(2601, Regex Regexes.uniqueIndex [ _; object; index ]) -> Some(UniqueIndexConstraint(object, index))
     | _ -> None
 
-let (|PrimaryKeyViolation|_|) =
+/// A SQLException active pattern which matches a generic constraint violation (2627) and extracts the constraint type, name, and table.
+let (|Constraint|_|) =
     function
-    | SqlException(2627, msg) when msg.StartsWith "Violation of PRIMARY KEY constraint" ->
-        let table = (msg.Split ' ')[12]
-        Some(PrimaryKeyViolation table[1 .. table.Length - 3])
+    | SqlException(2627, Regex Regexes.constraintViolation [ _; constraintType; constraintName; table ]) ->
+        Some(Constraint(constraintType, constraintName, table))
     | _ -> None
 
+/// A Constraint active pattern which matches a unique key constraint and extracts the constraint name and table.
+let (|UniqueConstraint|_|) =
+    function
+    | Constraint("UNIQUE KEY", constraintName, table) -> Some(UniqueConstraint(constraintName, table))
+    | _ -> None
+
+/// A Constraint active pattern which matches a primary key constraint and extracts the constraint name and table.
+let (|PrimaryKeyConstraint|_|) =
+    function
+    | Constraint("PRIMARY KEY", _, table) -> Some(PrimaryKeyConstraint table)
+    | _ -> None
+
+/// A SQLException active pattern which matches a null column insertion violation (515) and extracts the column and table.
 let (|NullColumnInsertion|_|) =
     function
-    | SqlException(515, msg) ->
-        let column = msg.Split(' ')[7] |> fun column -> column[1 .. (column.Length - 3)]
-
-        let table =
-            msg.Split(' ').[9].Split('.')
-            |> Seq.last
-            |> fun table -> table[.. (table.Length - 3)]
-
-        Some(NullColumnInsertion(table, column))
+    | SqlException(515, Regex Regexes.nullColumn [ _; column; table ]) -> Some(NullColumnInsertion(table, column))
     | _ -> None

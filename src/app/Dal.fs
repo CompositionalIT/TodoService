@@ -25,8 +25,10 @@ let createTodo (connectionString: string) (Data cmd: CreateTodoCmd) = task {
             :> Task
 
         return Ok cmd.CreatedId
-    with UniqueConstraint("dbo.Todo", "UC_Todo_Title") ->
+    with
+    | UniqueConstraint("UC_Todo_Title", "dbo.Todo") ->
         return Error(DomainError "A Todo with this title already exists.")
+    | PrimaryKeyConstraint "dbo.Todo" -> return Error(DomainError $"A Todo with this ID already exists.")
 }
 
 let completeTodo (connectionString: string) (Data cmd: CompleteTodoCmd) = taskResult {

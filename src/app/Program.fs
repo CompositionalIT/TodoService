@@ -12,7 +12,8 @@ module Infrastructure =
             JsonSerializerOptions(
                 // PropertyNamingPolicy = JsonNamingPolicy.CamelCase, // Require camel case JSON
                 Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, // Allow unescaped JSON
-                PropertyNameCaseInsensitive = true // Allow case-insensitive JSON
+                PropertyNameCaseInsensitive = true, // Allow case-insensitive JSON
+                DefaultIgnoreCondition = Serialization.JsonIgnoreCondition.WhenWritingNull // Skip out null fields
             )
         // options.Converters.Add(JsonFSharpConverter(allowNullFields = true)) // Nice F# JSON serialization
         SystemTextJson.Serializer options
