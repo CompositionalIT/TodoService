@@ -33,7 +33,7 @@ type TodoId =
 
     static member TryCreate(guid: string, ?field) : ValidationResult<TodoId> = result {
         let field = field |> Option.defaultValue "TodoId"
-        let! todoId = guid |> Guid.TryParse |> Result.ofParseResult field guid
+        let! todoId = guid |> Result.ofParseResult field
         return! TodoId.TryCreate(todoId, field = field)
     }
 
@@ -52,6 +52,11 @@ type Cmd<'T> =
     member this.Value =
         match this with
         | Data v -> v
+
+[<AutoOpen>]
+module Patterns =
+    /// Unwraps the Value member of some data.
+    let inline (|Data|) x = (^a: (member Value: _) x)
 
 type CreateTodoCmd =
     Cmd<{|

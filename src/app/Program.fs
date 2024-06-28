@@ -37,7 +37,7 @@ module Infrastructure =
         }
 
 let app = application {
-    use_router Todo.Api.giraffeRouter
+    use_router Todo.Routing.giraffeRouter
     error_handler Infrastructure.errorHandler
     service_config (fun svc -> svc.AddSingleton Infrastructure.customNegotiation)
     use_json_serializer Infrastructure.jsonSerializer

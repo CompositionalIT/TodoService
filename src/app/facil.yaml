@@ -15,14 +15,15 @@ rulesets:
     namespaceOrModuleDeclaration: module Db
     tableDtos:
       - include: .*
+        except: Grate*
 
-    scriptBasePath: ../db
     scripts:
-      - include: "DbQueries/*.sql"
-      - include: "DbCommands/*.sql"
+      - include: "Queries/*.sql"
+      - include: "Commands/*.sql"
 
     tableScripts:
       - include: .*
+        except: Grate*|ScriptsRun*|Version*
         scripts:
           - type: insert
           - type: update
