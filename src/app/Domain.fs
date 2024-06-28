@@ -27,14 +27,15 @@ type TodoId =
 
     static member Create() = Guid.NewGuid() |> TodoId
 
-    static member TryCreate(field, todoId) : ValidationResult<TodoId> =
-        Check.Guid.notEmpty field todoId |> Result.map TodoId
+    static member TryCreate(todoId, ?field) : ValidationResult<TodoId> =
+        let field = field |> Option.defaultValue "TodoId"
+        todoId |> Check.Guid.notEmpty field |> Result.map TodoId
 
-    static member TryCreate(field, guid: string) : ValidationResult<TodoId> =
-        guid
-        |> Guid.TryParse
-        |> Result.ofParseResult field guid
-        |> Result.bind (fun todoId -> TodoId.TryCreate(field, todoId))
+    static member TryCreate(guid: string, ?field) : ValidationResult<TodoId> = result {
+        let field = field |> Option.defaultValue "TodoId"
+        let! todoId = guid |> Guid.TryParse |> Result.ofParseResult field guid
+        return! TodoId.TryCreate(todoId, field = field)
+    }
 
 type Todo = {
     Id: TodoId
@@ -42,26 +43,87 @@ type Todo = {
     Description: String255 option
     CreatedDate: DateTime
     CompletedDate: DateTime option
-} with
+}
 
-    static member TryCreate(title, description, todoId) : ValidationResult<Todo> = validate {
-        let! title = title |> String255.TryCreate "Title"
+type Cmd<'T> =
+    private
+    | Data of 'T
 
-        and! todoId =
-            match todoId with
-            | Some(todoId: Guid) -> TodoId.TryCreate("TodoId", todoId)
-            | None -> TodoId.Create() |> Ok
+    member this.Value =
+        match this with
+        | Data v -> v
 
-        and! description =
-            description
-            |> Option.ofObj
-            |> Option.toResultOption (String255.TryCreate "Description")
+type CreateTodoCmd =
+    Cmd<{|
+        CreatedId: TodoId
+        Title: String255
+        Description: String255 option
+        CreatedDate: DateTime
+    |}>
 
-        return {
-            Id = todoId
+type CompleteTodoCmd =
+    Cmd<{|
+        CompletedId: TodoId
+        Date: DateTime
+    |}>
+
+type DeleteTodoCmd = Cmd<{| DeletedId: TodoId |}>
+
+type EditTodoCmd =
+    Cmd<{|
+        EditedId: TodoId
+        Title: String255
+        Description: String255 option
+    |}>
+
+[<RequireQualifiedAccess>]
+module Todo =
+    let private checkActive todo =
+        if todo.CompletedDate.IsSome then
+            Error "Todo is already completed."
+        else
+            Ok()
+
+    /// Creates a new todo, with an optional todoId.
+    let create title description todoId =
+        Data {|
+            CreatedId = todoId |> Option.defaultWith (fun () -> TodoId.Create())
             Title = title
             Description = description
             CreatedDate = DateTime.UtcNow
-            CompletedDate = None
-        }
+        |}
+        : CreateTodoCmd
+
+    /// Completes the todo.
+    let complete todo = result {
+        do! checkActive todo
+
+        return
+            (Data {|
+                CompletedId = todo.Id
+                Date = DateTime.UtcNow
+            |}
+            : CompleteTodoCmd)
+    }
+
+    /// Checks if a todo can be deleted.
+    let delete todo = result {
+        do! checkActive todo
+        return (Data {| DeletedId = todo.Id |}: DeleteTodoCmd)
+    }
+
+    /// Sets the title AND description of the Todo.
+    let edit title description todo = result {
+        do! checkActive todo
+
+        if title = todo.Title && description = todo.Description then
+            return! Error "No changes were made."
+
+        return
+            (Data {|
+                EditedId = todo.Id
+                Title = title
+                Description = description
+            |}
+            : EditTodoCmd)
     }

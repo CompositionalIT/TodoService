@@ -11,7 +11,9 @@ module Infrastructure =
         let options =
             JsonSerializerOptions(
                 // PropertyNamingPolicy = JsonNamingPolicy.CamelCase, // Require camel case JSON
-                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping // Allow unescaped JSON
+                Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, // Allow unescaped JSON
+                PropertyNameCaseInsensitive = true, // Allow case-insensitive JSON
+                DefaultIgnoreCondition = Serialization.JsonIgnoreCondition.WhenWritingNull // Skip out null fields
             )
         // options.Converters.Add(JsonFSharpConverter(allowNullFields = true)) // Nice F# JSON serialization
         SystemTextJson.Serializer options
@@ -21,7 +23,7 @@ module Infrastructure =
         match ex with
         | :? SqlException ->
             clearResponse
-            >=> ServerErrors.INTERNAL_ERROR "An error occurred connecting to the database."
+            >=> ServerErrors.INTERNAL_ERROR "A critical database error occurred."
         | _ -> clearResponse >=> ServerErrors.INTERNAL_ERROR ex.Message
 
     /// Optional - only return text or JSON, not XML (which never works anyway).
