@@ -10,7 +10,9 @@
         <Compile Include="Sql.fs" />
         <Compile Include="Dapper.fs" />
         <Compile Include="Queries/Queries.fs" />
+        <None Include="Queries/*.sql" />
         <Compile Include="Commands/Commands.fs" />
+        <None Include="Commands/*.sql" />
         <Compile Include="Routing.fs" />
         <Compile Include="Program.fs" />
         <Content Include="sample.http" />

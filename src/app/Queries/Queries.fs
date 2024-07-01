@@ -1,9 +1,9 @@
 module Todo.Api.Queries
 
-open Db.Scripts
+open Db
 open Domain
-open Giraffe
 open FsToolkit.ErrorHandling
+open Giraffe
 open Microsoft.AspNetCore.Http
 
 let getTodoRaw (connectionString: string) (todoId: string) = taskResult {
@@ -11,7 +11,7 @@ let getTodoRaw (connectionString: string) (todoId: string) = taskResult {
 
     // Using Facil's built-in CRUD script to get a Todo by ID.
     let! todoDto =
-        Todo_ById
+        Scripts.Todo_ById
             .WithConnection(connectionString)
             .WithParameters(todoId.Value)
             .AsyncExecuteSingle()
@@ -25,12 +25,19 @@ let getTodo (todoId: string) next (ctx: HttpContext) = task {
 }
 
 let getAllTodos next (ctx: HttpContext) = task {
-    let! results = Queries.GetAllTodos.WithConnection(ctx.TodoDbConnectionString).ExecuteAsync()
+    let! results =
+        Scripts.Queries.GetAllTodos
+            .WithConnection(ctx.TodoDbConnectionString)
+            .ExecuteAsync()
+
     return! json results next ctx
 }
 
 let getTodoStats next (ctx: HttpContext) = task {
-    let! stats = Queries.GetTodoStats.WithConnection(ctx.TodoDbConnectionString).ExecuteAsync()
+    let! stats =
+        Scripts.Queries.GetTodoStats
+            .WithConnection(ctx.TodoDbConnectionString)
+            .ExecuteAsync()
 
     let getStat status =
         stats

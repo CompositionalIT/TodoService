@@ -1,6 +1,6 @@
 module Todo.Api.Commands
 
-open Db.Scripts
+open Db
 open Domain
 open Giraffe
 open FsToolkit.ErrorHandling
@@ -40,19 +40,13 @@ module CreateTodo =
     let writeToDb (connectionString: string) (Data cmd: CreateTodoCmd) = task {
         try
             do!
-                Todo_Insert
+                Scripts.Todo_Insert
                     .WithConnection(connectionString)
-                    .WithParameters(
-                        cmd.CreatedId.Value,
-                        cmd.Title.Value,
-                        cmd.Description |> Option.map _.Value,
-                        cmd.CreatedDate,
-                        None
-                    )
+                    .WithParameters(cmd)
                     .ExecuteAsync()
                 :> Task
 
-            return Ok cmd.CreatedId
+            return Ok cmd.Id
         with
         | UniqueConstraint("UC_Todo_Title", "dbo.Todo") ->
             return Error(DomainError "A Todo with this title already exists.")
@@ -84,18 +78,18 @@ module CreateTodo =
             return! cmd |> writeToDb ctx.TodoDbConnectionString
         }
 
-        return! Result.toHttpHandler (result, _.Value >> json) next ctx
+        return! Result.toHttpHandler (result, json) next ctx
     }
 
 module CompleteTodo =
     let writeToDb (connectionString: string) (Data cmd: CompleteTodoCmd) = taskResult {
         let! rowsModified =
-            Commands.CompleteTodo
+            Scripts.Commands.CompleteTodo
                 .WithConnection(connectionString)
-                .WithParameters(cmd.Date, cmd.CompletedId.Value)
+                .WithParameters(cmd.Date, cmd.Id)
                 .ExecuteAsync()
 
-        return! rowsModified |> ofRowsModified $"Todo {cmd.CompletedId.Value} not found"
+        return! rowsModified |> ofRowsModified $"Todo {cmd.Id} not found"
     }
 
     let handler (todoId: string) next (ctx: HttpContext) = task {
@@ -112,12 +106,12 @@ module DeleteTodo =
     let writeToDb (connectionString: string) (Data cmd: DeleteTodoCmd) = taskResult {
         // Using Facil's built-in CRUD script to delete a Todo.
         let! rowsModified =
-            Todo_Delete
+            Scripts.Todo_Delete
                 .WithConnection(connectionString)
-                .WithParameters(cmd.DeletedId.Value)
+                .WithParameters(cmd)
                 .ExecuteAsync()
 
-        return! rowsModified |> ofRowsModified $"Todo {cmd.DeletedId.Value} not found"
+        return! rowsModified |> ofRowsModified $"Todo {cmd.Id} not found"
     }
 
     let handler todoId next (ctx: HttpContext) = task {
@@ -140,16 +134,12 @@ module EditTodo =
     let writeToDb (connectionString: string) (Data cmd: EditTodoCmd) = taskResult {
         try
             let! rowsModified =
-                Commands.EditTodo
+                Scripts.Commands.EditTodo
                     .WithConnection(connectionString)
-                    .WithParameters(
-                        Id = cmd.EditedId.Value,
-                        Title = cmd.Title.Value,
-                        Description = (cmd.Description |> Option.map _.Value |> Option.toObj)
-                    )
+                    .WithParameters(cmd)
                     .ExecuteAsync()
 
-            do! rowsModified |> ofRowsModified $"Unknown Todo {cmd.EditedId.Value}"
+            do! rowsModified |> ofRowsModified $"Unknown Todo {cmd.Id}"
         with UniqueConstraint("dbo.Todo", "UC_Todo_Title") ->
             return! Error(DomainError "A Todo with this title already exists.")
     }
@@ -192,7 +182,9 @@ module EditTodo =
 
 let clearAllTodos next (ctx: HttpContext) = task {
     do!
-        Commands.ClearAllTodos.WithConnection(ctx.TodoDbConnectionString).ExecuteAsync()
+        Scripts.Commands.ClearAllTodos
+            .WithConnection(ctx.TodoDbConnectionString)
+            .ExecuteAsync()
         |> Task.map ignore
 
     return! Successful.OK "All todos deleted" next ctx
