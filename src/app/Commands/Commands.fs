@@ -2,6 +2,7 @@ module Todo.Api.Commands
 
 open Db
 open Domain
+open Environment
 open Giraffe
 open FsToolkit.ErrorHandling
 open Microsoft.AspNetCore.Http
@@ -10,8 +11,8 @@ open System
 open System.Threading.Tasks
 open Validus
 
-let private loadTodo (connectionString: string) (todoId: string) : ServiceResultAsync<Todo> = taskResult {
-    let! result = Queries.getTodoRaw connectionString todoId
+let private loadTodo (env: IQueryTodo) (todoId: TodoId) : ServiceResultAsync<Todo> = taskResult {
+    let! result = env.GetTodoById todoId
 
     return!
         validate {
@@ -37,7 +38,7 @@ module CreateTodo =
         Description: string
     }
 
-    let writeToDb (connectionString: string) (Data cmd: CreateTodoCmd) = task {
+    let write (connectionString: string) (Data cmd: CreateTodoCmd) = task {
         try
             do!
                 Scripts.Todo_Insert
@@ -50,10 +51,10 @@ module CreateTodo =
         with
         | UniqueConstraint("UC_Todo_Title", "dbo.Todo") ->
             return Error(DomainError "A Todo with this title already exists.")
-        | PrimaryKeyConstraint "dbo.Todo" -> return Error(DomainError $"A Todo with this ID already exists.")
+        | PrimaryKeyConstraint "dbo.Todo" -> return Error(DomainError "A Todo with this ID already exists.")
     }
 
-    let execute (request: CreateTodoRequest) : ServiceResult<_> = result {
+    let execute (env: ICommandTodo) (request: CreateTodoRequest) : ServiceResultAsync<_> = taskResult {
         let! title, todoId, description =
             validate {
                 let! title = request.Title |> String255.TryCreate "Title"
@@ -68,21 +69,18 @@ module CreateTodo =
             }
             |> Result.mapError InvalidRequest
 
-        return Todo.create title description todoId
+        let cmd = Todo.create title description todoId
+        return! env.CreateTodo cmd
     }
 
-    let handler next (ctx: HttpContext) = task {
-        let! result = taskResult {
-            let! request = ctx.BindJsonAsync<CreateTodoRequest>()
-            let! cmd = execute request
-            return! cmd |> writeToDb ctx.TodoDbConnectionString
-        }
-
+    let handler env next (ctx: HttpContext) = task {
+        let! request = ctx.BindJsonAsync<CreateTodoRequest>()
+        let! result = execute env request
         return! Result.toHttpHandler (result, json) next ctx
     }
 
 module CompleteTodo =
-    let writeToDb (connectionString: string) (Data cmd: CompleteTodoCmd) = taskResult {
+    let write (connectionString: string) (Data cmd: CompleteTodoCmd) = taskResult {
         let! rowsModified =
             Scripts.Commands.CompleteTodo
                 .WithConnection(connectionString)
@@ -92,18 +90,20 @@ module CompleteTodo =
         return! rowsModified |> ofRowsModified $"Todo {cmd.Id} not found"
     }
 
-    let handler (todoId: string) next (ctx: HttpContext) = task {
-        let! result = taskResult {
-            let! todo = loadTodo ctx.TodoDbConnectionString todoId
-            let! cmd = todo |> Todo.complete |> Result.mapError DomainError
-            return! cmd |> writeToDb ctx.TodoDbConnectionString
-        }
+    let execute (env: #ICommandTodo & #IQueryTodo) (todoId: string) = taskResult {
+        let! todoId = todoId |> TodoId.TryCreate |> Result.mapError InvalidRequest
+        let! todo = loadTodo env todoId
+        let! cmd = todo |> Todo.complete |> Result.mapError DomainError
+        return! env.CompleteTodo cmd
+    }
 
+    let handler env todoId next (ctx: HttpContext) = task {
+        let! result = execute env todoId
         return! Result.toHttpHandler result next ctx
     }
 
 module DeleteTodo =
-    let writeToDb (connectionString: string) (Data cmd: DeleteTodoCmd) = taskResult {
+    let write (connectionString: string) (Data cmd: DeleteTodoCmd) = taskResult {
         // Using Facil's built-in CRUD script to delete a Todo.
         let! rowsModified =
             Scripts.Todo_Delete
@@ -114,24 +114,20 @@ module DeleteTodo =
         return! rowsModified |> ofRowsModified $"Todo {cmd.Id} not found"
     }
 
-    let handler todoId next (ctx: HttpContext) = task {
-        let! result = taskResult {
-            let! todo = loadTodo ctx.TodoDbConnectionString todoId
-            let! cmd = todo |> Todo.delete |> Result.mapError DomainError
-            return! cmd |> writeToDb ctx.TodoDbConnectionString
-        }
+    let execute (env: #IQueryTodo & #ICommandTodo) (todoId: string) = taskResult {
+        let! todoId = todoId |> TodoId.TryCreate |> Result.mapError InvalidRequest
+        let! todo = loadTodo env todoId
+        let! cmd = todo |> Todo.delete |> Result.mapError DomainError
+        return! env.DeleteTodo cmd
+    }
 
+    let handler env todoId next (ctx: HttpContext) = task {
+        let! result = execute env todoId
         return! Result.toHttpHandler result next ctx
     }
 
 module EditTodo =
-    type EditTodoRequest = {
-        Todo: Todo
-        Title: string
-        Description: string
-    }
-
-    let writeToDb (connectionString: string) (Data cmd: EditTodoCmd) = taskResult {
+    let write (connectionString: string) (Data cmd: EditTodoCmd) = taskResult {
         try
             let! rowsModified =
                 Scripts.Commands.EditTodo
@@ -144,39 +140,29 @@ module EditTodo =
             return! Error(DomainError "A Todo with this title already exists.")
     }
 
-    let execute request : ServiceResult<_> = result {
-        let! title, description =
+    let execute (env: #IQueryTodo & #ICommandTodo) (todoId: string) title description : ServiceResultAsync<_> = taskResult {
+        let! todoId, title, description =
             validate {
-                let! title = request.Title |> String255.TryCreate "Title"
+                let! todoId = TodoId.TryCreate todoId
+                let! title = title |> String255.TryCreate "Title"
 
                 and! description =
-                    request.Description
+                    description
                     |> Option.ofObj
                     |> Option.toResultOption (String255.TryCreate "Description")
 
-                return title, description
+                return todoId, title, description
             }
             |> Result.mapError InvalidRequest
 
-        return! request.Todo |> Todo.edit title description |> Result.mapError DomainError
+        let! todo = loadTodo env todoId
+        let! cmd = todo |> Todo.edit title description |> Result.mapError DomainError
+        return! env.EditTodo cmd
     }
 
-    let handler todoId next (ctx: HttpContext) = task {
+    let handler env todoId next (ctx: HttpContext) = task {
         let! request = ctx.BindJsonAsync<{| Title: string; Description: string |}>()
-
-        let! result = taskResult {
-            let! todo = loadTodo ctx.TodoDbConnectionString todoId
-
-            let! cmd =
-                execute {
-                    Todo = todo
-                    Title = request.Title
-                    Description = request.Description
-                }
-
-            return! cmd |> writeToDb ctx.TodoDbConnectionString
-        }
-
+        let! result = execute env todoId request.Title request.Description
         return! Result.toHttpHandler result next ctx
     }
 

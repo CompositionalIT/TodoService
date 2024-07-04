@@ -1,4 +1,5 @@
-﻿open Giraffe
+﻿open Environment
+open Giraffe
 open Microsoft.Data.SqlClient
 open Microsoft.Extensions.DependencyInjection
 open Saturn
@@ -6,6 +7,7 @@ open System.Text.Encodings.Web
 open System.Text.Json
 
 module Infrastructure =
+
     /// A STJ serializer with some specific options set.
     let jsonSerializer =
         let options =
@@ -36,10 +38,15 @@ module Infrastructure =
             member _.Rules = dict [ "text/plain", string >> text; "*/*", json ]
         }
 
+    let serviceConfig (svc: IServiceCollection) =
+        svc
+            .AddSingleton(customNegotiation)
+            .AddScoped<IEnv, Composition.RealEnvironment>()
+
 let app = application {
     use_router Todo.Routing.giraffeRouter
     error_handler Infrastructure.errorHandler
-    service_config (fun svc -> svc.AddSingleton Infrastructure.customNegotiation)
+    service_config Infrastructure.serviceConfig
     use_json_serializer Infrastructure.jsonSerializer
 }
 

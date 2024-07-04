@@ -1,38 +1,51 @@
 module Todo.Routing
 
+open Environment
 open Giraffe
+open Microsoft.AspNetCore.Http
 open Saturn
 
 /// Giraffe's version of router
-let giraffeRouter: HttpHandler =
-    subRoute
-        "/todo"
-        (choose [
-            GET >=> route "/" >=> Api.Queries.getAllTodos
-            GET >=> route "/stats" >=> Api.Queries.getTodoStats
+let giraffeRouter next (ctx: HttpContext) = task {
+    let env = ctx.GetService<IEnv>()
 
-            POST >=> route "/" >=> Api.Commands.CreateTodo.handler
-            DELETE >=> route "/" >=> Api.Commands.clearAllTodos
+    return!
+        subRoute
+            "/todo"
+            (choose [
+                GET >=> route "/" >=> Api.Queries.getAllTodos
+                GET >=> route "/stats" >=> Api.Queries.GetTodoStats.handler env
 
-            GET >=> routef "/%s" Api.Queries.getTodo
-            PUT >=> routef "/%s" Api.Commands.EditTodo.handler
-            PUT >=> routef "/%s/complete" Api.Commands.CompleteTodo.handler
-            DELETE >=> routef "/%s" Api.Commands.DeleteTodo.handler
-        ])
+                POST >=> route "/" >=> Api.Commands.CreateTodo.handler env
+                DELETE >=> route "/" >=> Api.Commands.clearAllTodos
+
+                GET >=> routef "/%s" (Api.Queries.GetTodo.handler env)
+                PUT >=> routef "/%s" (Api.Commands.EditTodo.handler env)
+                PUT >=> routef "/%s/complete" (Api.Commands.CompleteTodo.handler env)
+                DELETE >=> routef "/%s" (Api.Commands.DeleteTodo.handler env)
+            ])
+            next
+            ctx
+}
 
 /// Saturn's version of router
-let saturnRouter: HttpHandler =
-    subRoute
-        "/todo"
-        (router {
-            get "/" Api.Queries.getAllTodos
-            get "/stats" Api.Queries.getTodoStats
+let saturnRouter next (ctx: HttpContext) = task {
+    let env = ctx.GetService<IEnv>()
 
-            post "/" Api.Commands.CreateTodo.handler
-            post "/clear" Api.Commands.clearAllTodos
+    let todoRoutes = router {
+        get "/" Api.Queries.getAllTodos
+        get "/stats" (Api.Queries.GetTodoStats.handler env)
 
-            getf "/%s" Api.Queries.getTodo
-            putf "/%s" Api.Commands.EditTodo.handler
-            putf "/%s/complete" Api.Commands.CompleteTodo.handler
-            deletef "/%s" Api.Commands.DeleteTodo.handler
-        })
+        post "/" (Api.Commands.CreateTodo.handler env)
+        post "/clear" Api.Commands.clearAllTodos
+
+        getf "/%s" (Api.Queries.GetTodo.handler env)
+        putf "/%s" (Api.Commands.EditTodo.handler env)
+        putf "/%s/complete" (Api.Commands.CompleteTodo.handler env)
+        deletef "/%s" (Api.Commands.DeleteTodo.handler env)
+    }
+
+    let appRouter = router { forward "/todo" todoRoutes }
+
+    return! appRouter next ctx
+}

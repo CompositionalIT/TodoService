@@ -1,10 +1,9 @@
 [<AutoOpen>]
 module Shared
 
-open Giraffe
-open Validus
-open System.Threading.Tasks
 open FsToolkit.ErrorHandling
+open System.Threading.Tasks
+open Validus
 
 /// Represents an error that occurred while executing a service call.
 type ServiceError =
@@ -28,18 +27,6 @@ type ServiceResult = ServiceResult<unit>
 type ServiceResultAsync<'T> = Task<ServiceResult<'T>>
 type ServiceResultAsync = Task<ServiceResult>
 
-type Result =
-    /// Converts a Service Errors into an HTTPHandler response in a consistent way.
-    static member toHttpHandler<'T>(result: 'T ServiceResult, ?onOk: 'T -> HttpHandler) : HttpHandler =
-        match result with
-        | Ok value ->
-            let onSuccess = defaultArg onOk (fun _ next ctx -> next ctx)
-            onSuccess value
-        | Error(DataNotFound message) -> RequestErrors.NOT_FOUND message
-        | Error(InvalidRequest messages) -> RequestErrors.badRequest (messages |> ValidationErrors.toMap |> json)
-        | Error(DomainError message) -> RequestErrors.BAD_REQUEST message
-        | Error(GenericError message) -> ServerErrors.INTERNAL_ERROR message
-
 module Result =
     let inline ofParseResult field unparsedValue : _ ValidationResult =
         unparsedValue
@@ -53,14 +40,3 @@ module Option =
         value
         |> Option.map (validator >> Result.map Some)
         |> Option.defaultWith (fun () -> Ok None)
-
-open Microsoft.Extensions.Configuration
-open Microsoft.AspNetCore.Http
-
-type HttpContext with
-
-    /// The SQL connection string to the Todo database.
-    member this.TodoDbConnectionString =
-        match this.GetService<IConfiguration>().GetConnectionString "TodoDb" with
-        | null -> failwith "Missing connection string"
-        | v -> v
