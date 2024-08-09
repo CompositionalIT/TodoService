@@ -1,5 +1,5 @@
 ﻿// Edit or remove this or the below line to regenerate on next build
-// Hash: 2a98c6665499062f1ede72fc3e85df867d2877a910c2a3309425694303cc672d
+// Hash: 148824c5a1e9fa54a121952bfa2e4472798193d044598aa253d3e62df4e22813
 
 //////////////////////////////////////////
 //
@@ -45,6 +45,59 @@ module TableDtos =
       }
 
       static member getPrimaryKey (dto: ``Todo``) =
+        dto.``Id``
+
+
+  module ``grate`` =
+
+
+    type ``ScriptsRun`` =
+      {
+        ``Id``: int64
+        ``Version_id``: int64 option
+        ``Script_name``: string option
+        ``Text_of_script``: string option
+        ``Text_hash``: string option
+        ``One_time_script``: bool option
+        ``Entry_date``: DateTime option
+        ``Modified_date``: DateTime option
+        ``Entered_by``: string option
+      }
+
+      static member getPrimaryKey (dto: ``ScriptsRun``) =
+        dto.``Id``
+
+
+    type ``ScriptsRunErrors`` =
+      {
+        ``Id``: int64
+        ``Repository_path``: string option
+        ``Version``: string option
+        ``Script_name``: string option
+        ``Text_of_script``: string option
+        ``Erroneous_part_of_script``: string option
+        ``Error_message``: string option
+        ``Entry_date``: DateTime option
+        ``Modified_date``: DateTime option
+        ``Entered_by``: string option
+      }
+
+      static member getPrimaryKey (dto: ``ScriptsRunErrors``) =
+        dto.``Id``
+
+
+    type ``Version`` =
+      {
+        ``Id``: int64
+        ``Repository_path``: string option
+        ``Version``: string option
+        ``Entry_date``: DateTime option
+        ``Modified_date``: DateTime option
+        ``Entered_by``: string option
+        ``Status``: string option
+      }
+
+      static member getPrimaryKey (dto: ``Version``) =
         dto.``Id``
 
 
@@ -147,6 +200,16 @@ WHERE
       executeQuerySingle connStr conn tran configureConn (configureCmd sqlParams) initOrdinals getItem tempTableData
 
 
+  /// SELECT
+  ///   [Id],
+  ///   [Title],
+  ///   [Description],
+  ///   [CreatedDate],
+  ///   [CompletedDate]
+  /// FROM
+  ///   [dbo].[Todo]
+  /// WHERE
+  ///   [Id] = @id
   type ``Todo_ById`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
 
     [<EditorBrowsable(EditorBrowsableState.Never)>]
@@ -618,13 +681,13 @@ WHERE
       ``Todo_Update_Executable``(this.connStr, this.conn, this.configureConn, this.userConfigureCmd, getSqlParams, [], this.tran)
 
 
-  module ``DbCommands`` =
+  module ``Commands`` =
 
 
       type ``ClearAllTodos`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
 
         let configureCmd userConfigureCmd (cmd: SqlCommand) =
-          cmd.CommandText <- """-- DbCommands/ClearAllTodos.sql
+          cmd.CommandText <- """-- Commands/ClearAllTodos.sql
 DELETE FROM dbo.Todo"""
           userConfigureCmd cmd
 
@@ -671,7 +734,7 @@ DELETE FROM dbo.Todo"""
       type ``CompleteTodo_Executable`` (connStr: string, conn: SqlConnection, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction) =
 
         let configureCmd sqlParams (cmd: SqlCommand) =
-          cmd.CommandText <- """-- DbCommands/CompleteTodo.sql
+          cmd.CommandText <- """-- Commands/CompleteTodo.sql
 UPDATE dbo.Todo
 SET CompletedDate = @Date
 WHERE Id = @Id"""
@@ -755,7 +818,7 @@ WHERE Id = @Id"""
       type ``EditTodo_Executable`` (connStr: string, conn: SqlConnection, configureConn: SqlConnection -> unit, userConfigureCmd: SqlCommand -> unit, getSqlParams: unit -> SqlParameter [], tempTableData: seq<TempTableData>, tran: SqlTransaction) =
 
         let configureCmd sqlParams (cmd: SqlCommand) =
-          cmd.CommandText <- """-- DbCommands/EditTodo.sql
+          cmd.CommandText <- """-- Commands/EditTodo.sql
 UPDATE dbo.Todo
 SET Title = @Title,
     [Description] = @Description
@@ -839,14 +902,15 @@ WHERE Id = @Id"""
           ``EditTodo_Executable``(this.connStr, this.conn, this.configureConn, this.userConfigureCmd, getSqlParams, [], this.tran)
 
 
-  module ``DbQueries`` =
+  module ``Queries`` =
 
 
-      type ``GetAllItems`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
+      type ``GetAllTodos`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
 
         let configureCmd userConfigureCmd (cmd: SqlCommand) =
-          cmd.CommandText <- """-- DbQueries/GetAllItems.sql
-SELECT * FROM dbo.Todo"""
+          cmd.CommandText <- """-- Queries/GetAllTodos.sql
+SELECT *
+FROM dbo.Todo"""
           userConfigureCmd cmd
 
         let mutable ``ordinal_Id`` = 0
@@ -879,7 +943,7 @@ SELECT * FROM dbo.Todo"""
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         new() =
           failwith "This constructor is for aiding reflection and type constraints only"
-          ``GetAllItems``(null, null, null)
+          ``GetAllTodos``(null, null, null)
 
         [<EditorBrowsable(EditorBrowsableState.Never)>]
         member val configureConn : SqlConnection -> unit = ignore with get, set
@@ -892,9 +956,9 @@ SELECT * FROM dbo.Todo"""
           this
 
         static member WithConnection(connectionString, ?configureConnection: SqlConnection -> unit) =
-          ``GetAllItems``(connectionString, null, null).ConfigureConnection(?configureConnection=configureConnection)
+          ``GetAllTodos``(connectionString, null, null).ConfigureConnection(?configureConnection=configureConnection)
 
-        static member WithConnection(connection, ?transaction) = ``GetAllItems``(null, connection, defaultArg transaction null)
+        static member WithConnection(connection, ?transaction) = ``GetAllTodos``(null, connection, defaultArg transaction null)
 
         member private this.ConfigureConnection(?configureConnection: SqlConnection -> unit) =
           match configureConnection with
@@ -948,7 +1012,7 @@ SELECT * FROM dbo.Todo"""
       type ``GetTodoStats`` private (connStr: string, conn: SqlConnection, tran: SqlTransaction) =
 
         let configureCmd userConfigureCmd (cmd: SqlCommand) =
-          cmd.CommandText <- """-- DbQueries/GetTodoStats.sql
+          cmd.CommandText <- """-- Queries/GetTodoStats.sql
 SELECT CompletionState, COUNT(*) AS TodoItems
 FROM
 (

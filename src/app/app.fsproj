@@ -8,9 +8,12 @@
         <Compile Include="Shared.fs" />
         <Compile Include="Domain.fs" />
         <Compile Include="Sql.fs" />
-        <Compile Include="Dal.fs" />
-        <Compile Include="Todo.Service.fs" />
-        <Compile Include="Todo.Api.fs" />
+        <Compile Include="Dapper.fs" />
+        <Compile Include="Queries/Queries.fs" />
+        <None Include="Queries/*.sql" />
+        <Compile Include="Commands/Commands.fs" />
+        <None Include="Commands/*.sql" />
+        <Compile Include="Routing.fs" />
         <Compile Include="Program.fs" />
         <Content Include="sample.http" />
         <Content Include="Properties\launchSettings.json" CopyToOutputDirectory="Always" />

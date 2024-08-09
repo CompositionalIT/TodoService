@@ -33,7 +33,7 @@ type TodoId =
 
     static member TryCreate(guid: string, ?field) : ValidationResult<TodoId> = result {
         let field = field |> Option.defaultValue "TodoId"
-        let! todoId = guid |> Guid.TryParse |> Result.ofParseResult field guid
+        let! todoId = guid |> Result.ofParseResult field
         return! TodoId.TryCreate(todoId, field = field)
     }
 
@@ -53,27 +53,28 @@ type Cmd<'T> =
         match this with
         | Data v -> v
 
+[<AutoOpen>]
+module Patterns =
+    /// Unwraps the Value member of some data.
+    let inline (|Data|) x = (^a: (member Value: _) x)
+
 type CreateTodoCmd =
     Cmd<{|
-        CreatedId: TodoId
-        Title: String255
-        Description: String255 option
+        Id: Guid
+        Title: string
+        Description: string option
         CreatedDate: DateTime
+        CompletedDate: DateTime option
     |}>
 
-type CompleteTodoCmd =
-    Cmd<{|
-        CompletedId: TodoId
-        Date: DateTime
-    |}>
-
-type DeleteTodoCmd = Cmd<{| DeletedId: TodoId |}>
+type CompleteTodoCmd = Cmd<{| Id: Guid; Date: DateTime |}>
+type DeleteTodoCmd = Cmd<{| Id: Guid |}>
 
 type EditTodoCmd =
     Cmd<{|
-        EditedId: TodoId
-        Title: String255
-        Description: String255 option
+        Id: Guid
+        Title: string
+        Description: string
     |}>
 
 [<RequireQualifiedAccess>]
@@ -85,12 +86,16 @@ module Todo =
             Ok()
 
     /// Creates a new todo, with an optional todoId.
-    let create title description todoId =
+    let create (title: String255) (description: String255 option) (todoId: TodoId option) =
         Data {|
-            CreatedId = todoId |> Option.defaultWith (fun () -> TodoId.Create())
-            Title = title
-            Description = description
+            Id =
+                todoId
+                |> Option.map _.Value
+                |> Option.defaultWith (fun () -> TodoId.Create().Value)
+            Title = title.Value
+            Description = description |> Option.map _.Value
             CreatedDate = DateTime.UtcNow
+            CompletedDate = None
         |}
         : CreateTodoCmd
 
@@ -100,7 +105,7 @@ module Todo =
 
         return
             (Data {|
-                CompletedId = todo.Id
+                Id = todo.Id.Value
                 Date = DateTime.UtcNow
             |}
             : CompleteTodoCmd)
@@ -109,7 +114,7 @@ module Todo =
     /// Checks if a todo can be deleted.
     let delete todo = result {
         do! checkActive todo
-        return (Data {| DeletedId = todo.Id |}: DeleteTodoCmd)
+        return (Data {| Id = todo.Id.Value |}: DeleteTodoCmd)
     }
 
     /// Sets the title AND description of the Todo.
@@ -121,9 +126,9 @@ module Todo =
 
         return
             (Data {|
-                EditedId = todo.Id
-                Title = title
-                Description = description
+                Id = todo.Id.Value
+                Title = title.Value
+                Description = description |> Option.map _.Value |> Option.toObj
             |}
             : EditTodoCmd)
     }
